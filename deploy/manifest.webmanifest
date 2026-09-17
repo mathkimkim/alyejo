@@ -1,0 +1,12 @@
+{
+  "name": "알려줘 · 반복 이동 MVP",
+  "short_name": "알려줘",
+  "lang": "ko-KR",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#081426",
+  "theme_color": "#081426",
+  "icons": [
+    {"src":"icon-180.png","sizes":"180x180","type":"image/png","purpose":"any maskable"}
+  ]
+}

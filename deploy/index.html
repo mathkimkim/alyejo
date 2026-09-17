@@ -1,0 +1,180 @@
+<!doctype html><html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="theme-color" content="#081426"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-title" content="알려줘"><link rel="manifest" href="manifest.webmanifest"><link rel="apple-touch-icon" href="icon-180.png"><title>알려줘 · 이동패턴 설정</title>
+<style>:root{font-family:system-ui,-apple-system,"Apple SD Gothic Neo",sans-serif;color:#edf5ff;background:#081426}*{box-sizing:border-box}body{margin:0}.app{max-width:720px;margin:auto;padding:22px 15px 55px}.eyebrow{font-size:12px;letter-spacing:.13em;color:#6fa9ff;font-weight:800}h1{font-size:28px;line-height:1.2;margin:7px 0 8px}h2{font-size:17px;margin:0 0 13px}.lead,.hint{color:#9db0c7;line-height:1.55;font-size:14px}.card{background:#0e1d31;border:1px solid #1c3552;border-radius:17px;padding:17px;margin:13px 0}.hero{background:linear-gradient(135deg,#12345a,#0e1d31)}.step{display:inline-flex;align-items:center;justify-content:center;width:25px;height:25px;border-radius:50%;background:#75acff;color:#071426;font-size:13px;margin-right:7px}.grid{display:grid;grid-template-columns:repeat(2,1fr);gap:11px}.field{margin-bottom:11px}.field label{display:block;font-size:12px;color:#aebed1;margin-bottom:6px}.field input{width:100%;padding:12px;border-radius:10px;border:1px solid #294665;background:#09182a;color:#edf5ff;font-size:16px}.searchline{display:grid;grid-template-columns:1fr auto;gap:8px}.actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:13px}button{border:0;border-radius:10px;padding:12px 14px;font-weight:800;font-size:14px;cursor:pointer;background:#75acff;color:#071426}button.secondary{background:#1b334f;color:#d7e7fb}button.danger{background:#41232d;color:#ffc0ca}button:disabled{opacity:.45}.results{margin:-4px 0 12px;border-radius:11px;overflow:hidden;border:1px solid #294665}.result{display:block;width:100%;text-align:left;background:#0a1a2e;color:#edf5ff;border-radius:0;border-bottom:1px solid #203b59;padding:11px}.result:last-child{border-bottom:0}.result small{display:block;color:#8fa5bd;margin-top:3px}.chosen{padding:10px 11px;border-radius:10px;background:#0a241f;border:1px solid #245a49;color:#c8f7e5;font-size:13px;line-height:1.5;margin-bottom:11px}.days{display:flex;gap:7px;flex-wrap:wrap}.day input{display:none}.day span{display:inline-block;border:1px solid #294665;background:#09182a;padding:9px 11px;border-radius:20px;color:#aebed1;font-size:13px}.day input:checked+span{background:#75acff;color:#071426;border-color:#75acff;font-weight:800}.summary{display:grid;gap:9px}.summary .row{display:flex;justify-content:space-between;gap:12px;padding:10px 0;border-bottom:1px solid #1c3552;font-size:14px}.summary .row:last-child{border:0}.summary b{text-align:right}.accent{color:#73dcaf}.warning{color:#ffd273}.note{padding:11px;border-radius:10px;background:#09182a;color:#a9bbd1;font-size:12px;line-height:1.55}.test{display:grid;grid-template-columns:repeat(2,1fr);gap:8px}.alert{margin-top:12px;padding:13px;border-radius:11px;background:#132a44;border-left:4px solid #75acff;line-height:1.55;font-size:14px}.alert.bad{background:#35212a;border-left-color:#ff788f}.alert.ok{background:#102d26;border-left-color:#41df9a}.hide{display:none}.saved{padding:14px;border-radius:12px;background:#102640}.saved h3{font-size:17px;margin:0 0 6px}.saved p{font-size:13px;color:#aebed1;margin:4px 0;line-height:1.5}@media(max-width:520px){.grid{grid-template-columns:1fr}h1{font-size:25px}}</style></head><body><main class="app">
+<header><div class="eyebrow">알려줘 · 반복 이동 MVP</div><h1>자주 가는 이동을 먼저 설정하세요.</h1><p class="lead">주소와 도착시간을 저장하면 TMAP이 평소 예상 이동시간과 권장 출발시간을 자동 계산합니다.</p></header>
+<section class="card hero"><h2><span class="step">1</span>이동 기본정보</h2><div class="field"><label>패턴 이름</label><input id="patternName" value="아침 등교"></div><div class="field"><label>출발지 검색</label><div class="searchline"><input id="originQuery" value="의정부 양지마을"><button data-search="origin">검색</button></div></div><div id="originResults" class="results hide"></div><div id="originChosen" class="chosen hide"></div><div class="field"><label>도착지 검색</label><div class="searchline"><input id="destQuery" value="의정부 동오초등학교"><button data-search="dest">검색</button></div></div><div id="destResults" class="results hide"></div><div id="destChosen" class="chosen hide"></div></section>
+<section class="card"><h2><span class="step">2</span>시간과 반복 요일</h2><div class="grid"><div class="field"><label>도착해야 하는 시간</label><input id="arrival" type="time" value="08:30"></div><div class="field"><label>TMAP 예상 이동시간</label><input id="duration" type="text" value="저장할 때 자동 조회" readonly></div><div class="field"><label>준비 여유시간(분)</label><input id="buffer" type="number" min="0" value="10"></div><div class="field"><label>출발 전 감시시간(분)</label><input id="monitorLead" type="number" min="10" value="30"></div></div><div class="field"><label>반복 요일</label><div class="days" id="days"></div></div><div id="calc" class="summary"></div><div class="actions"><button id="savePattern">TMAP 조회 후 이동패턴 저장</button></div></section>
+<section class="card"><h2><span class="step">3</span>저장된 이동패턴</h2><div id="savedPattern" class="hint">저장된 이동패턴이 없습니다.</div></section>
+<section class="card"><h2><span class="step">4</span>ITS 실제 교통조회</h2><p class="hint">현재 경로와 더 넓은 범위를 차례로 조회해, 해당 지역의 ITS 도로 제공 여부를 확인합니다.</p><div class="field"><label>ITS 인증키</label><input id="itsKey" type="password" autocomplete="off" placeholder="인증키 입력"></div><div class="actions"><button id="checkTraffic">현재 경로</button><button id="checkTraffic5" class="secondary">출발지 5km</button><button id="checkTraffic10" class="secondary">출발지 10km</button><button id="clearItsKey" class="secondary">인증키 삭제</button></div><div id="trafficState" class="hint" style="margin-top:12px">먼저 현재 경로를 조회하고, 0건이면 5km와 10km를 눌러보세요.</div><div id="trafficResults"></div></section>
+<section class="card"><h2><span class="step">5</span>TMAP 출발시간 예측</h2><p class="hint">저장한 경로를 지정한 날짜·시간에 출발할 때 예상 소요시간을 조회하고, 평소 이동시간과 비교합니다.</p><div class="field"><label>TMAP 앱키</label><input id="tmapKey" type="password" autocomplete="off" placeholder="TMAP 앱키 입력"></div><div class="grid"><div class="field"><label>예측 날짜</label><input id="predictionDate" type="date"></div><div class="field"><label>예측 출발시간</label><input id="predictionTime" type="time"></div></div><div class="actions"><button id="checkPrediction">예상 소요시간 조회</button><button id="clearTmapKey" class="secondary">TMAP 키 삭제</button></div><div id="predictionState" class="hint" style="margin-top:12px">저장된 권장 출발시간을 자동으로 사용합니다.</div><div id="predictionResult"></div></section>
+<section class="card"><h2><span class="step">6</span>이상 알림 테스트</h2><p class="hint">가상 교통상황으로 알림 문구를 확인합니다. 정상일 때는 알림을 보내지 않습니다.</p><div class="test"><button class="secondary" data-test="normal">정상</button><button data-test="delay">15분 지연</button><button data-test="work">공사 발생</button><button data-test="unknown">원인 미확인 정체</button></div><div id="testAlert" class="alert hide"></div><div class="actions"><button id="notify" class="secondary">아이폰 알림 권한 요청</button><button id="enableAutoWatch">자동 감시 켜기</button></div><div id="autoWatchState" class="hint" style="margin-top:10px">자동 감시는 아직 켜지지 않았습니다.</div></section>
+<section class="card"><div class="note">빠른 개인 테스트용입니다. ITS 인증키와 이동 설정은 이 아이폰 안에만 저장됩니다. 정식 서비스 전에는 인증키를 서버 비공개 방식으로 전환합니다.</div><div class="actions"><button id="reset" class="danger">저장 내용 초기화</button></div></section></main>
+<script>const $=id=>document.getElementById(id),KEY='alryeok_route_v1',ITS_KEY='alryeok_its_key_v1',labels=['일','월','화','수','목','금','토'];let selected={origin:null,dest:null};function esc(v){return String(v??'').replace(/[&<>'"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c]))}function mins(t){const[h,m]=t.split(':').map(Number);return h*60+m}function clock(n){n=(n+1440)%1440;return`${String(Math.floor(n/60)).padStart(2,'0')}:${String(n%60).padStart(2,'0')}`}function calculate(){const arrival=$('arrival').value||'08:30',dur=+$('duration').value||0,buf=+$('buffer').value||0,lead=+$('monitorLead').value||0,depart=mins(arrival)-dur-buf,monitor=depart-lead;$('calc').innerHTML=`<div class="row"><span>권장 출발시간</span><b class="accent">${clock(depart)}</b></div><div class="row"><span>교통 감시 시작</span><b class="warning">${clock(monitor)}</b></div><div class="note">계산 근거: 도착 ${arrival} − 이동 ${dur}분 − 준비 여유 ${buf}분. 감시는 권장 출발 ${lead}분 전부터 시작합니다.</div>`;return{arrival,dur,buf,lead,depart:clock(depart),monitor:clock(monitor)}}async function search(kind){const q=$(kind==='origin'?'originQuery':'destQuery').value.trim(),box=$(kind+'Results');if(!q)return alert('검색어를 입력하세요.');box.classList.remove('hide');box.innerHTML='<button class="result" disabled>주소를 찾는 중입니다…</button>';try{const u='https://nominatim.openstreetmap.org/search?format=jsonv2&limit=5&countrycodes=kr&accept-language=ko&q='+encodeURIComponent(q),r=await fetch(u,{headers:{Accept:'application/json'}});if(!r.ok)throw 0;const data=await r.json();box._data=data;box.innerHTML=data.length?data.map((x,i)=>`<button class="result" data-pick="${kind}" data-i="${i}">${esc(x.name||x.display_name.split(',')[0])}<small>${esc(x.display_name)}</small></button>`).join(''):'<button class="result" disabled>검색 결과가 없습니다. 정확한 도로명주소로 다시 검색하세요.</button>'}catch(e){box.innerHTML='<button class="result" disabled>주소 검색에 실패했습니다. 잠시 후 다시 시도하세요.</button>'}}function pick(kind,i){const box=$(kind+'Results'),x=box._data[i];selected[kind]={name:x.name||x.display_name.split(',')[0],address:x.display_name,lat:+x.lat,lon:+x.lon};box.classList.add('hide');const c=$(kind+'Chosen');c.classList.remove('hide');c.innerHTML=`✓ ${esc(selected[kind].address)}<br><small>좌표 ${selected[kind].lat.toFixed(6)}, ${selected[kind].lon.toFixed(6)}</small>`}function readDays(){return[...document.querySelectorAll('#days input:checked')].map(x=>+x.value)}function savePattern(){if(!selected.origin||!selected.dest)return alert('출발지와 도착지 검색 결과를 각각 선택하세요.');const days=readDays();if(!days.length)return alert('반복 요일을 선택하세요.');const p={id:Date.now(),name:$('patternName').value.trim()||'반복 이동',origin:selected.origin,dest:selected.dest,days,...calculate()};localStorage.setItem(KEY,JSON.stringify(p));renderSaved(p);show('이동패턴이 이 아이폰에 저장되었습니다.','ok')}function renderSaved(p){$('savedPattern').innerHTML=p?`<div class="saved"><h3>${esc(p.name)}</h3><p>${esc(p.origin.name)} → ${esc(p.dest.name)}</p><p>${p.days.map(d=>labels[d]).join('·')}요일 · ${p.arrival}까지 도착</p><p>권장 출발 <b class="accent">${p.depart}</b> · 감시 시작 <b class="warning">${p.monitor}</b></p><p>출발지 ${p.origin.lat.toFixed(5)}, ${p.origin.lon.toFixed(5)}<br>도착지 ${p.dest.lat.toFixed(5)}, ${p.dest.lon.toFixed(5)}</p></div>`:'저장된 이동패턴이 없습니다.'}function show(msg,type='bad'){const e=$('testAlert');e.className='alert '+type;e.innerHTML=esc(msg).replace(/\n/g,'<br>')}async function checkTraffic(){const p=JSON.parse(localStorage.getItem(KEY)||'null'),key=$('itsKey').value.trim();if(!p)return alert('먼저 출발지와 도착지를 저장하세요.');if(!key)return alert('ITS 인증키를 입력하세요.');localStorage.setItem(ITS_KEY,key);const pad=.006,minX=Math.min(p.origin.lon,p.dest.lon)-pad,maxX=Math.max(p.origin.lon,p.dest.lon)+pad,minY=Math.min(p.origin.lat,p.dest.lat)-pad,maxY=Math.max(p.origin.lat,p.dest.lat)+pad,u=`https://openapi.its.go.kr:9443/trafficInfo?apiKey=${encodeURIComponent(key)}&type=all&minX=${minX.toFixed(6)}&maxX=${maxX.toFixed(6)}&minY=${minY.toFixed(6)}&maxY=${maxY.toFixed(6)}&getType=json`;$('trafficState').textContent='ITS에서 실제 도로 데이터를 조회하는 중입니다…';$('trafficResults').innerHTML='';try{const r=await fetch(u);if(!r.ok)throw Error(`HTTP ${r.status}`);const j=await r.json(),data=j?.response?.data||j?.data||[];if(!Array.isArray(data)||!data.length){$('trafficState').textContent='조회는 성공했지만 이 좌표 범위에서 제공되는 도로 데이터가 없습니다.';return}$('trafficState').innerHTML=`<b class="accent">${data.length}개 도로 링크 조회 성공</b> · 최대 30개 표시`;$('trafficResults').innerHTML=data.slice(0,30).map(x=>`<div class="row"><span><b>${esc(x.roadName||x.roadname||'도로명 없음')}</b><br><small class="muted">${esc(x.linkId||x.linkid||'-')}</small></span><span>${esc(x.speed??'-')}km/h<br><small class="muted">${esc(x.travelTime??x.traveltime??'-')}초</small></span></div>`).join('')}catch(e){$('trafficState').innerHTML=`<span style="color:#ff9cac">실제 조회 실패: ${esc(e.message||'연결 오류')}</span><br><small>인증키가 정확한지 확인하세요. 키가 정확한데도 실패하면 Safari 직접 호출이 차단된 것이므로 다음 단계에서 Netlify 서버 중계로 바꿉니다.</small>`}}function test(type){const p=JSON.parse(localStorage.getItem(KEY)||'null');if(!p)return alert('먼저 이동패턴을 저장하세요.');if(type==='normal')return show('평소와 비슷합니다. 실제 서비스에서는 알림을 보내지 않습니다.','ok');const msg=type==='delay'?`오늘 ${p.name} 경로가 평소보다 약 15분 지연됩니다. ${p.depart}보다 15분 일찍 출발하세요.`:type==='work'?`오늘 ${p.name} 경로에 공식 공사정보가 확인됐습니다. 예상 이동시간이 평소보다 증가했습니다.`:`공식 사고·공사 원인은 확인되지 않았지만 ${p.name} 경로의 속도가 평소보다 크게 떨어졌습니다.`;show(msg);if('Notification'in window&&Notification.permission==='granted')new Notification('알려줘 · 이동 이상 감지',{body:msg})}document.addEventListener('click',e=>{const s=e.target.closest('[data-search]');if(s)search(s.dataset.search);const p=e.target.closest('[data-pick]');if(p)pick(p.dataset.pick,+p.dataset.i);const t=e.target.closest('[data-test]');if(t)test(t.dataset.test)});$('days').innerHTML=labels.map((d,i)=>`<label class="day"><input type="checkbox" value="${i}" ${i>=1&&i<=5?'checked':''}><span>${d}</span></label>`).join('');['arrival','duration','buffer','monitorLead'].forEach(id=>$(id).oninput=calculate);$('savePattern').onclick=savePattern;$('checkTraffic').onclick=checkTraffic;$('itsKey').value=localStorage.getItem(ITS_KEY)||'';$('clearItsKey').onclick=()=>{localStorage.removeItem(ITS_KEY);$('itsKey').value='';$('trafficState').textContent='인증키를 삭제했습니다.'};$('notify').onclick=async()=>{if(!('Notification'in window))return show('이 Safari에서는 웹 알림을 지원하지 않습니다. 홈 화면에 추가한 뒤 다시 확인하세요.');const p=await Notification.requestPermission();show(p==='granted'?'알림 권한이 허용되었습니다.':'알림 권한이 허용되지 않았습니다.',p==='granted'?'ok':'bad')};$('reset').onclick=()=>{if(confirm('저장된 이동패턴과 ITS 인증키를 삭제할까요?')){localStorage.removeItem(KEY);localStorage.removeItem(ITS_KEY);$('itsKey').value='';selected={origin:null,dest:null};$('originChosen').classList.add('hide');$('destChosen').classList.add('hide');renderSaved(null);show('저장 내용을 삭제했습니다.','ok')}};calculate();renderSaved(JSON.parse(localStorage.getItem(KEY)||'null'));</script>
+<script>
+async function checkTrafficRange(rangeKm){
+ const p=JSON.parse(localStorage.getItem(KEY)||'null'),key=$('itsKey').value.trim();
+ if(!p)return alert('먼저 출발지와 도착지를 저장하세요.');
+ if(!key)return alert('ITS 인증키를 입력하세요.');
+ localStorage.setItem(ITS_KEY,key);
+ let minX,maxX,minY,maxY,label;
+ if(rangeKm){
+  const lat=p.origin.lat,lon=p.origin.lon,dy=rangeKm/111,dx=rangeKm/(111*Math.cos(lat*Math.PI/180));
+  minX=lon-dx;maxX=lon+dx;minY=lat-dy;maxY=lat+dy;label=`출발지 반경 ${rangeKm}km`;
+ }else{
+  const pad=.006;
+  minX=Math.min(p.origin.lon,p.dest.lon)-pad;maxX=Math.max(p.origin.lon,p.dest.lon)+pad;
+  minY=Math.min(p.origin.lat,p.dest.lat)-pad;maxY=Math.max(p.origin.lat,p.dest.lat)+pad;label='현재 경로';
+ }
+ const bounds=`경도 ${minX.toFixed(6)} ~ ${maxX.toFixed(6)} · 위도 ${minY.toFixed(6)} ~ ${maxY.toFixed(6)}`;
+ const u=`https://openapi.its.go.kr:9443/trafficInfo?apiKey=${encodeURIComponent(key)}&type=all&minX=${minX.toFixed(6)}&maxX=${maxX.toFixed(6)}&minY=${minY.toFixed(6)}&maxY=${maxY.toFixed(6)}&getType=json`;
+ $('trafficState').textContent=`${label} ITS 데이터를 조회하는 중입니다…`;$('trafficResults').innerHTML='';
+ try{
+  const r=await fetch(u);if(!r.ok)throw Error(`HTTP ${r.status}`);
+  const j=await r.json(),header=j?.response?.header||j?.header||{};
+  const msg=header.resultMsg||header.resultMessage||header.message||j?.response?.message||j?.message||'응답 정상';
+  const paths=[['response','data'],['data'],['response','body','items','item'],['body','items','item'],['items','item'],['response','items'],['items'],['response','body','items'],['body','items']];
+  const normalize=v=>{if(Array.isArray(v))return v;if(v&&Array.isArray(v.item))return v.item;if(v&&typeof v==='object'&&(v.linkId||v.linkid||v.speed!==undefined))return[v];return[]};
+  let data=[],dataPath='응답 구조에서 링크 배열을 찾지 못함',firstPath='';
+  for(const path of paths){let v=j;for(const keyPart of path)v=v?.[keyPart];const arr=normalize(v);if(arr.length||(!firstPath&&(Array.isArray(v)||(v&&Array.isArray(v.item))))){if(!firstPath)firstPath=path.join('.');if(arr.length){data=arr;dataPath=path.join('.');break}}}
+  if(!dataPath.startsWith('응답')&&!data.length)dataPath=firstPath||dataPath;
+  const topKeys=Object.keys(j||{}).join(', ')||'없음';
+  $('trafficState').innerHTML=`<b class="${data.length?'accent':'warning'}">${esc(label)} · ${data.length}개 링크</b><br><small>ITS 응답: ${esc(msg)}<br>${esc(bounds)}<br>응답 키: ${esc(topKeys)} · 데이터 경로: ${esc(dataPath)}</small>`;
+  if(!data.length){$('trafficResults').innerHTML='<div class="note">응답은 성공했지만 링크 배열이 비어 있거나 앱이 아직 해당 응답 구조를 찾지 못했습니다. 위의 응답 키·데이터 경로를 확인하면 원인을 구분할 수 있습니다.</div>';return}
+  const value=(obj,names,pattern)=>{const has=v=>v!==undefined&&v!==null&&String(v).trim()!==''&&String(v).toLowerCase()!=='null';for(const name of names)if(has(obj?.[name]))return obj[name];const keyName=Object.keys(obj||{}).find(k=>pattern.test(k)&&has(obj[k]));return keyName?obj[keyName]:'정보없음'};
+  const unit=(v,suffix)=>v==='정보없음'?'정보없음':`${esc(v)}${suffix}`;
+  $('trafficResults').innerHTML=data.slice(0,30).map(x=>{const road=value(x,['roadName','roadname','road_name'],/road.?name/i),link=value(x,['linkId','linkid','link_id'],/link.?id/i),speed=value(x,['speed','speedValue','avgSpeed','averageSpeed','velocity','spd'],/speed|velocity/i),travel=value(x,['travelTime','traveltime','travel_time','time'],/travel.?time|^time$/i);return `<div class="row" style="display:grid;grid-template-columns:1fr;gap:4px;padding:11px 0;border-bottom:1px solid #1c3552"><b>${esc(road)}</b><small class="muted">LINK ID: ${esc(link)}</small><small>속도: ${unit(speed,'km/h')} · 통행시간: ${unit(travel,'초')}</small></div>`}).join('');
+ }catch(e){$('trafficState').innerHTML=`<span style="color:#ff9cac">${esc(label)} 조회 실패: ${esc(e.message||'연결 오류')}</span><br><small>${esc(bounds)}</small>`}
+}
+$('checkTraffic').onclick=()=>checkTrafficRange(0);
+$('checkTraffic5').onclick=()=>checkTrafficRange(5);
+$('checkTraffic10').onclick=()=>checkTrafficRange(10);
+</script>
+<script>
+const TMAP_KEY='alryeok_tmap_key_v1';
+function localDateValue(d=new Date()){
+ const y=d.getFullYear(),m=String(d.getMonth()+1).padStart(2,'0'),day=String(d.getDate()).padStart(2,'0');
+ return `${y}-${m}-${day}`;
+}
+function predictionIso(date,time){return `${date}T${time}:00+0900`}
+function findRouteSummary(j){
+ const candidates=[j,j?.properties,j?.route,j?.routesInfo,j?.features?.[0]?.properties,j?.features?.find?.(x=>x?.properties?.totalTime)?.properties];
+ return candidates.find(x=>x&&x.totalTime!==undefined)||null;
+}
+async function checkTmapPrediction(){
+ const p=JSON.parse(localStorage.getItem(KEY)||'null'),appKey=$('tmapKey').value.trim();
+ const date=$('predictionDate').value,time=$('predictionTime').value;
+ if(!p)return alert('먼저 출발지와 도착지를 저장하세요.');
+ if(!appKey)return alert('TMAP 앱키를 입력하세요.');
+ if(!date||!time)return alert('예측 날짜와 출발시간을 선택하세요.');
+ localStorage.setItem(TMAP_KEY,appKey);
+ $('predictionState').textContent='TMAP에서 해당 출발시간의 예상 경로를 계산하는 중입니다…';
+ $('predictionResult').innerHTML='';
+ const body={routesInfo:{
+  departure:{name:p.origin.name||'출발지',lon:String(p.origin.lon),lat:String(p.origin.lat),depSearchFlag:'03'},
+  destination:{name:p.dest.name||'도착지',lon:String(p.dest.lon),lat:String(p.dest.lat),destSearchFlag:'03'},
+  predictionType:'departure',predictionTime:predictionIso(date,time),searchOption:'00',tollgateCarType:'car',trafficInfo:'N'
+ }};
+ try{
+  const r=await fetch('https://apis.openapi.sk.com/tmap/routes/prediction?version=1&reqCoordType=WGS84GEO&resCoordType=WGS84GEO&totalValue=2',{method:'POST',headers:{appKey,'Content-Type':'application/json','Accept':'application/json'},body:JSON.stringify(body)});
+  const raw=await r.text();let j={};try{j=JSON.parse(raw)}catch{}
+  if(!r.ok)throw Error(j?.error?.message||j?.errorMessage||j?.message||`HTTP ${r.status}`);
+  const s=findRouteSummary(j),seconds=Number(s?.totalTime);
+  if(!Number.isFinite(seconds))throw Error('응답에서 총 소요시간을 찾지 못했습니다.');
+  const predicted=Math.max(1,Math.round(seconds/60)),normal=Number(p.dur)||0,delta=predicted-normal;
+  const state=delta>=8?'bad':delta>=4?'warning':'ok';
+  const title=delta>=8?'평소보다 지연 예상':delta>=4?'조금 더 걸릴 수 있음':'평소와 비슷함';
+  $('predictionState').innerHTML=`<b class="${state==='ok'?'accent':'warning'}">${esc(title)}</b> · ${esc(date)} ${esc(time)} 출발`;
+  $('predictionResult').innerHTML=`<div class="saved" style="margin-top:10px"><p>TMAP 예상 소요시간 <b>${predicted}분</b></p><p>설정한 평소 이동시간 <b>${normal}분</b></p><p>차이 <b class="${delta>=8?'warning':'accent'}">${delta>0?'+':''}${delta}분</b></p></div>`;
+  if(delta>=8){
+   const msg=`${p.name} 경로가 평소보다 약 ${delta}분 더 걸릴 것으로 예상됩니다. ${p.depart}보다 일찍 출발하세요.`;
+   show(msg);
+   if('Notification'in window&&Notification.permission==='granted')new Notification('알려줘 · 출발시간 예측',{body:msg});
+  }
+ }catch(e){
+  $('predictionState').innerHTML=`<span style="color:#ff9cac">TMAP 예측 실패: ${esc(e.message||'연결 오류')}</span><br><small>앱키와 TMAP 타임머신 API 사용 권한을 확인하세요. Safari 직접 호출이 차단되면 서버 중계 방식으로 전환해야 합니다.</small>`;
+ }
+}
+$('tmapKey').value=localStorage.getItem(TMAP_KEY)||'';
+$('predictionDate').value=localDateValue();
+const savedForPrediction=JSON.parse(localStorage.getItem(KEY)||'null');
+$('predictionTime').value=savedForPrediction?.depart||'07:30';
+$('checkPrediction').onclick=checkTmapPrediction;
+$('clearTmapKey').onclick=()=>{localStorage.removeItem(TMAP_KEY);$('tmapKey').value='';$('predictionState').textContent='TMAP 앱키를 삭제했습니다.'};
+const oldSavePattern=$('savePattern').onclick;
+$('savePattern').onclick=()=>{oldSavePattern();const latest=JSON.parse(localStorage.getItem(KEY)||'null');if(latest?.depart)$('predictionTime').value=latest.depart};
+$('reset').onclick=()=>{if(confirm('저장된 이동패턴과 API 인증키를 삭제할까요?')){localStorage.removeItem(KEY);localStorage.removeItem(ITS_KEY);localStorage.removeItem(TMAP_KEY);$('itsKey').value='';$('tmapKey').value='';selected={origin:null,dest:null};$('originChosen').classList.add('hide');$('destChosen').classList.add('hide');renderSaved(null);$('predictionResult').innerHTML='';$('predictionState').textContent='저장 내용을 삭제했습니다.';show('저장 내용을 삭제했습니다.','ok')}};
+
+function nextPatternDate(days,arrival){
+ const now=new Date();
+ for(let add=0;add<8;add++){
+  const d=new Date(now.getFullYear(),now.getMonth(),now.getDate()+add);
+  if(!days.includes(d.getDay()))continue;
+  const [h,m]=arrival.split(':').map(Number),target=new Date(d.getFullYear(),d.getMonth(),d.getDate(),h,m);
+  if(target>now)return localDateValue(d);
+ }
+ throw Error('다음 반복 날짜를 계산하지 못했습니다.');
+}
+function autoCalculate(dur){
+ const arrival=$('arrival').value||'08:30',buf=Number($('buffer').value)||0,lead=Number($('monitorLead').value)||0;
+ if(!Number.isFinite(dur)||dur<1){
+  $('calc').innerHTML='<div class="note">이동패턴을 저장하면 다음 반복일의 도착시간을 기준으로 TMAP 예상 이동시간을 조회합니다.</div>';
+  return{arrival,dur:0,buf,lead,depart:'-',monitor:'-'};
+ }
+ const depart=mins(arrival)-dur-buf,monitor=depart-lead;
+ $('calc').innerHTML=`<div class="row"><span>TMAP 예상 이동시간</span><b class="accent">${dur}분</b></div><div class="row"><span>권장 출발시간</span><b class="accent">${clock(depart)}</b></div><div class="row"><span>교통 감시 시작</span><b class="warning">${clock(monitor)}</b></div><div class="note">계산 근거: 도착 ${arrival} − TMAP 예측 ${dur}분 − 준비 여유 ${buf}분. 감시는 권장 출발 ${lead}분 전부터 시작합니다.</div>`;
+ return{arrival,dur,buf,lead,depart:clock(depart),monitor:clock(monitor)};
+}
+calculate=()=>autoCalculate(parseInt($('duration').value,10));
+renderSaved=p=>{$('savedPattern').innerHTML=p?`<div class="saved"><h3>${esc(p.name)}</h3><p>${esc(p.origin.name)} → ${esc(p.dest.name)}</p><p>${p.days.map(d=>labels[d]).join('·')}요일 · ${p.arrival}까지 도착</p><p>${p.baselineSource?'TMAP 기준시간':'기존 설정시간'} <b>${p.dur}분</b> <small class="muted">${p.baselineSource?`(${esc(p.baselineDate)} 예측)`:'(다시 저장하면 TMAP으로 갱신)'}</small></p><p>권장 출발 <b class="accent">${p.depart}</b> · 감시 시작 <b class="warning">${p.monitor}</b></p><p>출발지 ${p.origin.lat.toFixed(5)}, ${p.origin.lon.toFixed(5)}<br>도착지 ${p.dest.lat.toFixed(5)}, ${p.dest.lon.toFixed(5)}</p></div>`:'저장된 이동패턴이 없습니다.'};
+
+async function savePatternWithTmap(){
+ if(!selected.origin||!selected.dest)return alert('출발지와 도착지 검색 결과를 각각 선택하세요.');
+ const days=readDays(),appKey=$('tmapKey').value.trim(),arrival=$('arrival').value;
+ if(!days.length)return alert('반복 요일을 선택하세요.');
+ if(!appKey){$('tmapKey').focus();$('tmapKey').scrollIntoView({behavior:'smooth',block:'center'});return alert('아래 TMAP 앱키를 먼저 입력하세요. 앱키는 이 아이폰에만 저장됩니다.');}
+ const button=$('savePattern');button.disabled=true;button.textContent='TMAP 예상시간 조회 중…';
+ try{
+  localStorage.setItem(TMAP_KEY,appKey);
+  const date=nextPatternDate(days,arrival),draft={origin:selected.origin,dest:selected.dest};
+  const body={routesInfo:{departure:{name:draft.origin.name||'출발지',lon:String(draft.origin.lon),lat:String(draft.origin.lat),depSearchFlag:'03'},destination:{name:draft.dest.name||'도착지',lon:String(draft.dest.lon),lat:String(draft.dest.lat),destSearchFlag:'03'},predictionType:'arrival',predictionTime:predictionIso(date,arrival),searchOption:'00',tollgateCarType:'car',trafficInfo:'N'}};
+  const r=await fetch('https://apis.openapi.sk.com/tmap/routes/prediction?version=1&reqCoordType=WGS84GEO&resCoordType=WGS84GEO&totalValue=2',{method:'POST',headers:{appKey,'Content-Type':'application/json','Accept':'application/json'},body:JSON.stringify(body)});
+  const raw=await r.text();let j={};try{j=JSON.parse(raw)}catch{}
+  if(!r.ok)throw Error(j?.error?.message||j?.errorMessage||j?.message||`HTTP ${r.status}`);
+  const seconds=Number(findRouteSummary(j)?.totalTime);
+  if(!Number.isFinite(seconds))throw Error('응답에서 총 소요시간을 찾지 못했습니다.');
+  const dur=Math.max(1,Math.round(seconds/60));$('duration').value=`${dur}분`;
+  const p={id:Date.now(),name:$('patternName').value.trim()||'반복 이동',origin:selected.origin,dest:selected.dest,days,...autoCalculate(dur),baselineSource:'TMAP 타임머신',baselineDate:`${date} ${arrival}`};
+  localStorage.setItem(KEY,JSON.stringify(p));renderSaved(p);$('predictionDate').value=date;$('predictionTime').value=p.depart;
+  show(`TMAP이 ${date} ${arrival} 도착 기준 이동시간을 ${dur}분으로 예측했습니다. 이동패턴을 저장했습니다.`,'ok');
+ }catch(e){
+  $('duration').value='조회 실패';autoCalculate(0);show(`TMAP 예상시간을 조회하지 못해 저장하지 않았습니다. ${e.message||'연결 오류'}`,'bad');
+ }finally{button.disabled=false;button.textContent='TMAP 조회 후 이동패턴 저장'}
+}
+$('savePattern').onclick=savePatternWithTmap;
+['arrival','buffer','monitorLead'].forEach(id=>$(id).addEventListener('input',()=>{$('duration').value='저장할 때 자동 조회';autoCalculate(0)}));
+const existingAuto=JSON.parse(localStorage.getItem(KEY)||'null');
+if(existingAuto){
+ selected={origin:existingAuto.origin,dest:existingAuto.dest};
+ $('patternName').value=existingAuto.name||'반복 이동';$('arrival').value=existingAuto.arrival||'08:30';$('buffer').value=existingAuto.buf??10;$('monitorLead').value=existingAuto.lead??30;
+ for(const input of document.querySelectorAll('#days input'))input.checked=existingAuto.days.includes(Number(input.value));
+ $('originChosen').classList.remove('hide');$('originChosen').innerHTML=`✓ ${esc(existingAuto.origin.address||existingAuto.origin.name)}<br><small>좌표 ${existingAuto.origin.lat.toFixed(6)}, ${existingAuto.origin.lon.toFixed(6)}</small>`;
+ $('destChosen').classList.remove('hide');$('destChosen').innerHTML=`✓ ${esc(existingAuto.dest.address||existingAuto.dest.name)}<br><small>좌표 ${existingAuto.dest.lat.toFixed(6)}, ${existingAuto.dest.lon.toFixed(6)}</small>`;
+ if(existingAuto.baselineSource){$('duration').value=`${existingAuto.dur}분`;autoCalculate(Number(existingAuto.dur))}else{$('duration').value='저장할 때 자동 조회';autoCalculate(0)}
+ renderSaved(existingAuto);
+}else autoCalculate(0);
+
+function b64ToBytes(v){const pad='='.repeat((4-v.length%4)%4),s=(v+pad).replace(/-/g,'+').replace(/_/g,'/');return Uint8Array.from(atob(s),c=>c.charCodeAt(0))}
+async function enableAutoWatch(){
+ const p=JSON.parse(localStorage.getItem(KEY)||'null');if(!p)return alert('먼저 TMAP 조회 후 이동패턴을 저장하세요.');
+ if(!('serviceWorker'in navigator)||!('PushManager'in window))return show('이 아이폰에서는 웹 푸시를 지원하지 않습니다. Safari에서 홈 화면에 추가한 PWA로 다시 시도하세요.','bad');
+ const btn=$('enableAutoWatch');btn.disabled=true;btn.textContent='자동 감시 등록 중…';
+ try{
+  const permission=Notification.permission==='granted'?'granted':await Notification.requestPermission();if(permission!=='granted')throw Error('알림 권한이 허용되지 않았습니다.');
+  const reg=await navigator.serviceWorker.ready,cr=await fetch('/api/config');if(!cr.ok)throw Error('서버 설정을 읽지 못했습니다.');const cfg=await cr.json();if(!cfg.vapidPublicKey)throw Error('서버 VAPID 키가 아직 설정되지 않았습니다.');
+  let sub=await reg.pushManager.getSubscription();if(!sub)sub=await reg.pushManager.subscribe({userVisibleOnly:true,applicationServerKey:b64ToBytes(cfg.vapidPublicKey)});
+  const rr=await fetch('/api/route',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({route:p,subscription:sub.toJSON()})});if(!rr.ok)throw Error((await rr.text())||'서버 등록 실패');
+  $('autoWatchState').innerHTML='<b class="accent">자동 감시가 켜졌습니다.</b> · 서버가 평일 감시시간에 TMAP을 확인합니다.';show('자동 감시가 등록되었습니다. 이상이 감지될 때만 푸시 알림을 보냅니다.','ok');
+ }catch(e){$('autoWatchState').textContent=`자동 감시 등록 실패: ${e.message||'연결 오류'}`;show($('autoWatchState').textContent,'bad')}finally{btn.disabled=false;btn.textContent='자동 감시 켜기'}
+}
+$('enableAutoWatch').onclick=enableAutoWatch;
+</script>
+<script>if('serviceWorker'in navigator)addEventListener('load',()=>navigator.serviceWorker.register('./sw.js').catch(()=>{}));</script></body></html>
