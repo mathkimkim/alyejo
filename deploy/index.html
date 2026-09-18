@@ -2,7 +2,7 @@
 <style>:root{font-family:system-ui,-apple-system,"Apple SD Gothic Neo",sans-serif;color:#edf5ff;background:#081426}*{box-sizing:border-box}body{margin:0}.app{max-width:720px;margin:auto;padding:22px 15px 55px}.eyebrow{font-size:12px;letter-spacing:.13em;color:#6fa9ff;font-weight:800}h1{font-size:28px;line-height:1.2;margin:7px 0 8px}h2{font-size:17px;margin:0 0 13px}.lead,.hint{color:#9db0c7;line-height:1.55;font-size:14px}.card{background:#0e1d31;border:1px solid #1c3552;border-radius:17px;padding:17px;margin:13px 0}.hero{background:linear-gradient(135deg,#12345a,#0e1d31)}.step{display:inline-flex;align-items:center;justify-content:center;width:25px;height:25px;border-radius:50%;background:#75acff;color:#071426;font-size:13px;margin-right:7px}.grid{display:grid;grid-template-columns:repeat(2,1fr);gap:11px}.field{margin-bottom:11px}.field label{display:block;font-size:12px;color:#aebed1;margin-bottom:6px}.field input{width:100%;padding:12px;border-radius:10px;border:1px solid #294665;background:#09182a;color:#edf5ff;font-size:16px}.searchline{display:grid;grid-template-columns:1fr auto;gap:8px}.actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:13px}button{border:0;border-radius:10px;padding:12px 14px;font-weight:800;font-size:14px;cursor:pointer;background:#75acff;color:#071426}button.secondary{background:#1b334f;color:#d7e7fb}button.danger{background:#41232d;color:#ffc0ca}button:disabled{opacity:.45}.results{margin:-4px 0 12px;border-radius:11px;overflow:hidden;border:1px solid #294665}.result{display:block;width:100%;text-align:left;background:#0a1a2e;color:#edf5ff;border-radius:0;border-bottom:1px solid #203b59;padding:11px}.result:last-child{border-bottom:0}.result small{display:block;color:#8fa5bd;margin-top:3px}.chosen{padding:10px 11px;border-radius:10px;background:#0a241f;border:1px solid #245a49;color:#c8f7e5;font-size:13px;line-height:1.5;margin-bottom:11px}.days{display:flex;gap:7px;flex-wrap:wrap}.day input{display:none}.day span{display:inline-block;border:1px solid #294665;background:#09182a;padding:9px 11px;border-radius:20px;color:#aebed1;font-size:13px}.day input:checked+span{background:#75acff;color:#071426;border-color:#75acff;font-weight:800}.summary{display:grid;gap:9px}.summary .row{display:flex;justify-content:space-between;gap:12px;padding:10px 0;border-bottom:1px solid #1c3552;font-size:14px}.summary .row:last-child{border:0}.summary b{text-align:right}.accent{color:#73dcaf}.warning{color:#ffd273}.note{padding:11px;border-radius:10px;background:#09182a;color:#a9bbd1;font-size:12px;line-height:1.55}.test{display:grid;grid-template-columns:repeat(2,1fr);gap:8px}.alert{margin-top:12px;padding:13px;border-radius:11px;background:#132a44;border-left:4px solid #75acff;line-height:1.55;font-size:14px}.alert.bad{background:#35212a;border-left-color:#ff788f}.alert.ok{background:#102d26;border-left-color:#41df9a}.hide{display:none}.saved{padding:14px;border-radius:12px;background:#102640}.saved h3{font-size:17px;margin:0 0 6px}.saved p{font-size:13px;color:#aebed1;margin:4px 0;line-height:1.5}@media(max-width:520px){.grid{grid-template-columns:1fr}h1{font-size:25px}}</style></head><body><main class="app">
 <header><div class="eyebrow">알려줘 · 반복 이동 MVP</div><h1>자주 가는 이동을 먼저 설정하세요.</h1><p class="lead">주소와 도착시간을 저장하면 TMAP이 평소 예상 이동시간과 권장 출발시간을 자동 계산합니다.</p></header>
 <section class="card hero"><h2><span class="step">1</span>이동 기본정보</h2><div class="field"><label>패턴 이름</label><input id="patternName" value="아침 등교"></div><div class="field"><label>출발지 검색</label><div class="searchline"><input id="originQuery" value="의정부 양지마을"><button data-search="origin">검색</button></div></div><div id="originResults" class="results hide"></div><div id="originChosen" class="chosen hide"></div><div class="field"><label>도착지 검색</label><div class="searchline"><input id="destQuery" value="의정부 동오초등학교"><button data-search="dest">검색</button></div></div><div id="destResults" class="results hide"></div><div id="destChosen" class="chosen hide"></div></section>
-<section class="card"><h2><span class="step">2</span>시간과 반복 요일</h2><div class="grid"><div class="field"><label>도착해야 하는 시간</label><input id="arrival" type="time" value="08:30"></div><div class="field"><label>TMAP 예상 이동시간</label><input id="duration" type="text" value="저장할 때 자동 조회" readonly></div><div class="field"><label>준비 여유시간(분)</label><input id="buffer" type="number" min="0" value="10"></div><div class="field"><label>출발 전 감시시간(분)</label><input id="monitorLead" type="number" min="10" value="30"></div></div><div class="field"><label>반복 요일</label><div class="days" id="days"></div></div><div id="calc" class="summary"></div><div class="actions"><button id="savePattern">TMAP 조회 후 이동패턴 저장</button></div></section>
+<section class="card"><h2><span class="step">2</span>시간과 반복 요일</h2><div class="grid"><div class="field"><label>도착해야 하는 시간</label><input id="arrival" type="time" value="08:30"></div><div class="field"><label>TMAP 예상 이동시간</label><input id="duration" type="text" value="저장할 때 자동 조회" readonly></div><div class="field"><label>준비 여유시간(분)</label><input id="buffer" type="number" min="0" value="10"></div><div class="field"><label>출발 전 감시시간(분)</label><input id="monitorLead" type="number" min="90" value="90"></div></div><div class="field"><label>반복 요일</label><div class="days" id="days"></div></div><div id="calc" class="summary"></div><div class="actions"><button id="savePattern">TMAP 조회 후 이동패턴 추가</button></div></section>
 <section class="card"><h2><span class="step">3</span>저장된 이동패턴</h2><div id="savedPattern" class="hint">저장된 이동패턴이 없습니다.</div></section>
 <section class="card"><h2><span class="step">4</span>ITS 실제 교통조회</h2><p class="hint">현재 경로와 더 넓은 범위를 차례로 조회해, 해당 지역의 ITS 도로 제공 여부를 확인합니다.</p><div class="field"><label>ITS 인증키</label><input id="itsKey" type="password" autocomplete="off" placeholder="인증키 입력"></div><div class="actions"><button id="checkTraffic">현재 경로</button><button id="checkTraffic5" class="secondary">출발지 5km</button><button id="checkTraffic10" class="secondary">출발지 10km</button><button id="clearItsKey" class="secondary">인증키 삭제</button></div><div id="trafficState" class="hint" style="margin-top:12px">먼저 현재 경로를 조회하고, 0건이면 5km와 10km를 눌러보세요.</div><div id="trafficResults"></div></section>
 <section class="card"><h2><span class="step">5</span>TMAP 출발시간 예측</h2><p class="hint">저장한 경로를 지정한 날짜·시간에 출발할 때 예상 소요시간을 조회하고, 평소 이동시간과 비교합니다.</p><div class="field"><label>TMAP 앱키</label><input id="tmapKey" type="password" autocomplete="off" placeholder="TMAP 앱키 입력"></div><div class="grid"><div class="field"><label>예측 날짜</label><input id="predictionDate" type="date"></div><div class="field"><label>예측 출발시간</label><input id="predictionTime" type="time"></div></div><div class="actions"><button id="checkPrediction">예상 소요시간 조회</button><button id="clearTmapKey" class="secondary">TMAP 키 삭제</button></div><div id="predictionState" class="hint" style="margin-top:12px">저장된 권장 출발시간을 자동으로 사용합니다.</div><div id="predictionResult"></div></section>
@@ -176,5 +176,47 @@ async function enableAutoWatch(){
  }catch(e){$('autoWatchState').textContent=`자동 감시 등록 실패: ${e.message||'연결 오류'}`;show($('autoWatchState').textContent,'bad')}finally{btn.disabled=false;btn.textContent='자동 감시 켜기'}
 }
 $('enableAutoWatch').onclick=enableAutoWatch;
+</script>
+<script>
+// 다중 경로 저장: 기존 단일 경로는 자동으로 첫 경로로 마이그레이션합니다.
+const ROUTES_KEY='alryeok_routes_v1';
+function getRoutes(){
+ const saved=JSON.parse(localStorage.getItem(ROUTES_KEY)||'null');
+ if(Array.isArray(saved))return saved;
+ const one=JSON.parse(localStorage.getItem(KEY)||'null');
+ const migrated=one?[one]:[];localStorage.setItem(ROUTES_KEY,JSON.stringify(migrated));return migrated;
+}
+function saveRoutes(routes){localStorage.setItem(ROUTES_KEY,JSON.stringify(routes));localStorage.setItem(KEY,JSON.stringify(routes[0]||null));}
+function renderRoutes(){
+ const routes=getRoutes();
+ $('savedPattern').innerHTML=routes.length?routes.map((p,i)=>`<div class="saved" style="margin-bottom:10px"><h3>${esc(p.name||`이동 ${i+1}`)}</h3><p>${esc(p.origin.name)} → ${esc(p.dest.name)}</p><p>${p.days.map(d=>labels[d]).join('·')}요일 · ${p.arrival}까지 도착</p><p>TMAP 기준 <b>${p.dur}분</b> · 권장 출발 <b class="accent">${p.depart}</b></p><p>감시 시작 <b class="warning">${clock(mins(p.depart)-90)}</b> · 15분마다 조회</p><div class="actions"><button class="danger" data-route-delete="${esc(p.id)}">이 경로 삭제</button></div></div>`).join(''):'저장된 이동패턴이 없습니다.';
+}
+const previousSave=$('savePattern').onclick;
+$('savePattern').onclick=async()=>{
+ $('monitorLead').value='90';
+ await previousSave();
+ const p=JSON.parse(localStorage.getItem(KEY)||'null');
+ if(!p||!p.dur||!Number.isFinite(Number(p.dur)))return;
+ p.lead=90;p.monitor=clock(mins(p.depart)-90);
+ const routes=getRoutes(),index=routes.findIndex(x=>String(x.id)===String(p.id));
+ if(index>=0)routes[index]=p;else routes.push(p);
+ saveRoutes(routes);renderRoutes();
+};
+document.addEventListener('click',e=>{
+ const del=e.target.closest('[data-route-delete]');
+ if(del){const routes=getRoutes().filter(p=>String(p.id)!==String(del.dataset.routeDelete));saveRoutes(routes);renderRoutes();show('이동경로를 삭제했습니다.','ok');}
+});
+const previousWatch=$('enableAutoWatch').onclick;
+$('enableAutoWatch').onclick=async()=>{
+ const routes=getRoutes();if(!routes.length)return alert('먼저 TMAP 조회 후 이동패턴을 저장하세요.');
+ const old=localStorage.getItem(KEY);localStorage.setItem(KEY,JSON.stringify(routes[0]));
+ // 기존 등록 함수가 첫 경로를 읽으므로, 같은 구독을 모든 경로와 함께 서버에 전송합니다.
+ const originalFetch=window.fetch;let sent=false;
+ window.fetch=async(...args)=>{const [url,opts]=args;if(String(url)==='/api/route'&&opts?.body){const body=JSON.parse(opts.body);body.routes=routes;delete body.route;sent=true;return originalFetch(url,{...opts,body:JSON.stringify(body)});}return originalFetch(...args)};
+ try{await previousWatch();}finally{window.fetch=originalFetch;localStorage.setItem(KEY,old||JSON.stringify(routes[0]));}
+};
+const previousReset=$('reset').onclick;
+$('reset').onclick=()=>{localStorage.removeItem(ROUTES_KEY);previousReset();renderRoutes();};
+renderRoutes();
 </script>
 <script>if('serviceWorker'in navigator)addEventListener('load',()=>navigator.serviceWorker.register('./sw.js').catch(()=>{}));</script></body></html>
