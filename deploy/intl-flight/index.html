@@ -29,18 +29,28 @@
 </main>
 <script>
 const $=x=>document.getElementById(x);
+const FORM_KEY='intl_flight_form_v1';
 const base=new Date(); base.setDate(base.getDate()+14); const end=new Date(base); end.setDate(end.getDate()+14);
-const iso=d=>d.toISOString().slice(0,10); $('start').value=iso(base); $('end').value=iso(end);
+const iso=d=>d.toISOString().slice(0,10);
+function defaultForm(){return{dep:'ICN',arr:'NRT',start:iso(base),end:iso(end),period:5,targetPrice:300000}}
+function loadForm(){
+  let saved=null; try{saved=JSON.parse(localStorage.getItem(FORM_KEY)||'null')}catch{}
+  const v={...defaultForm(),...(saved||{})};
+  $('dep').value=v.dep; $('arr').value=v.arr; $('start').value=v.start; $('end').value=v.end; $('period').value=String(v.period); $('target').value=String(v.targetPrice);
+}
+function saveForm(){localStorage.setItem(FORM_KEY,JSON.stringify(params()))}
 const money=n=>n?Number(n).toLocaleString('ko-KR')+'원':'가격 없음';
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 function params(){return{dep:$('dep').value.trim().toUpperCase(),arr:$('arr').value.trim().toUpperCase(),start:$('start').value,end:$('end').value,period:+$('period').value,targetPrice:+$('target').value}}
 function bookingUrl(f){const dep=encodeURIComponent(String(f.fromCity||$('dep').value).toUpperCase()),arr=encodeURIComponent(String(f.toCity||$('arr').value).toUpperCase()),trip=encodeURIComponent('A.'+dep+'.A.'+arr+'.'+f.departureDate+'/A.'+arr+'.A.'+dep+'.'+f.returnDate);return 'https://air-web.myrealtrip.com/results?adult=1&tripType=ROUND_TRIP&trip='+trip}
 function render(fs){const target=+$('target').value;$('results').innerHTML=fs.length?fs.map(f=>`<a class="fare" href="${bookingUrl(f)}" target="_blank" rel="noopener"><div class="top"><span>${esc(f.departureDate)} → ${esc(f.returnDate)}</span><span class="price">${money(f.totalPrice)}</span></div><div class="small">${esc(f.airline||'항공사 미표시')} · ${esc(f.period)}일 일정 ${f.totalPrice<=target?'<span class="ok">· 목표가 이하</span>':''}</div><span class="book">실시간 항공권 확인 →</span></a>`).join(''):'조회된 최저가 데이터가 없습니다.'}
-async function doSearch(){const p=params();$('state').textContent='마이리얼트립 최저가 데이터를 조회 중입니다…';const qs=new URLSearchParams({dep:p.dep,arr:p.arr,start:p.start,end:p.end,period:String(p.period)});const r=await fetch('/api/intl-flight-search?'+qs),j=await r.json();if(!r.ok){$('state').innerHTML='<span class="warn">'+(j.error||'조회 실패')+'</span>';return}$('state').innerHTML=`<span class="ok">조회 성공</span> · ${j.count}건 ${j.cached?'· 30분 캐시 사용':''}`;render(j.fares)}
+async function doSearch(){saveForm();const p=params();$('state').textContent='마이리얼트립 최저가 데이터를 조회 중입니다…';const qs=new URLSearchParams({dep:p.dep,arr:p.arr,start:p.start,end:p.end,period:String(p.period)});const r=await fetch('/api/intl-flight-search?'+qs),j=await r.json();if(!r.ok){$('state').innerHTML='<span class="warn">'+(j.error||'조회 실패')+'</span>';return}$('state').innerHTML=`<span class="ok">조회 성공</span> · ${j.count}건 ${j.cached?'· 30분 캐시 사용':''}`;render(j.fares)}
 function b64(s){const p='='.repeat((4-s.length%4)%4),b=(s+p).replace(/-/g,'+').replace(/_/g,'/'),raw=atob(b);return Uint8Array.from([...raw].map(c=>c.charCodeAt(0)))}
 async function subscribe(){if(!('serviceWorker'in navigator)||!('PushManager'in window))throw Error('이 브라우저는 웹 푸시를 지원하지 않습니다.');const perm=await Notification.requestPermission();if(perm!=='granted')throw Error('알림 권한이 필요합니다.');const reg=await navigator.serviceWorker.register('./sw.js');await navigator.serviceWorker.ready;const cfg=await (await fetch('/api/config')).json();if(!cfg.vapidPublicKey)throw Error('VAPID_PUBLIC_KEY가 설정되지 않았습니다.');let sub=await reg.pushManager.getSubscription();if(!sub)sub=await reg.pushManager.subscribe({userVisibleOnly:true,applicationServerKey:b64(cfg.vapidPublicKey)});return sub.toJSON()}
+['dep','arr','start','end','period','target'].forEach(id=>$(id).addEventListener('change',saveForm));
 $('search').onclick=()=>doSearch().catch(e=>$('state').textContent=e.message);
-$('watch').onclick=async()=>{try{const p=params();$('state').textContent='자동감시를 등록 중입니다…';const subscription=await subscribe();const r=await fetch('/api/intl-flight-watch',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({...p,subscription})}),j=await r.json();if(!r.ok)throw Error(j.error||'등록 실패');$('state').innerHTML=`<span class="ok">1시간 자동감시 등록 완료</span> · 현재 목표가 이하 ${j.qualifyingCount}건`;await doSearch()}catch(e){$('state').innerHTML='<span class="warn">'+e.message+'</span>'}};
+$('watch').onclick=async()=>{try{saveForm();const p=params();$('state').textContent='자동감시를 등록 중입니다…';const subscription=await subscribe();const r=await fetch('/api/intl-flight-watch',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({...p,subscription})}),j=await r.json();if(!r.ok)throw Error(j.error||'등록 실패');$('state').innerHTML=`<span class="ok">1시간 자동감시 등록 완료</span> · 현재 목표가 이하 ${j.qualifyingCount}건`;await doSearch()}catch(e){$('state').innerHTML='<span class="warn">'+e.message+'</span>'}};
 $('stop').onclick=async()=>{await fetch('/api/intl-flight-watch',{method:'DELETE'});$('state').textContent='자동감시를 껐습니다.'};
-fetch('/api/intl-flight-watch').then(r=>r.json()).then(j=>{if(j.enabled)$('state').innerHTML=`<span class="ok">감시 중</span> · ${j.dep}→${j.arr} · 목표 ${money(j.targetPrice)}`}).catch(()=>{});
+loadForm();
+fetch('/api/intl-flight-watch').then(r=>r.json()).then(j=>{if(j.enabled){$('dep').value=j.dep||$('dep').value;$('arr').value=j.arr||$('arr').value;$('start').value=j.start||$('start').value;$('end').value=j.end||$('end').value;$('period').value=String(j.period||$('period').value);$('target').value=String(j.targetPrice||$('target').value);saveForm();$('state').innerHTML=`<span class="ok">감시 중</span> · ${j.dep}→${j.arr} · 목표 ${money(j.targetPrice)}`}}).catch(()=>{});
 </script></body></html>
