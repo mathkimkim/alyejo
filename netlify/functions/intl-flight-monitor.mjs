@@ -14,7 +14,14 @@ export default async () => {
   if (!pub || !priv) return;
 
   try {
-    const result = await discoverMrt({ dep:w.dep, period:w.period, region:w.region, targetPrice:w.targetPrice });
+    const result = await discoverMrt({
+      dep:w.dep,
+      period:w.period,
+      region:w.region,
+      targetPrice:w.targetPrice,
+      departureDate:w.departureDate
+    });
+
     const previous = w.prices || {};
     const fresh = result.rows.filter(x => !previous[x.key]);
 
@@ -22,6 +29,7 @@ export default async () => {
       webpush.setVapidDetails(subject, pub, priv);
       const best = [...fresh].sort((a,b)=>a.totalPrice-b.totalPrice)[0];
       const more = fresh.length > 1 ? ` 외 ${fresh.length-1}곳` : '';
+
       await webpush.sendNotification(w.subscription, JSON.stringify({
         title: '✈️ 새 해외 특가 발견',
         body: `${best.cityName || best.toCity} · ${best.departureDate}~${best.returnDate} · ${best.totalPrice.toLocaleString('ko-KR')}원${more}`,
