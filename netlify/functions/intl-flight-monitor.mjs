@@ -1,12 +1,12 @@
 import { getStore } from '@netlify/blobs';
 import webpush from 'web-push';
-import { searchMrt } from './_intl-flight-lib.mjs';
+import { discoverMrt } from './_intl-flight-lib.mjs';
 
 const store = getStore({ name: 'intl-flight-alert', consistency: 'strong' });
 
 export default async () => {
   const w = await store.get('watch', { type: 'json' });
-  if (!w?.enabled || !w.subscription) return;
+  if (!w?.enabled || !w.subscription || w.mode !== 'discover') return;
 
   const pub = Netlify.env.get('VAPID_PUBLIC_KEY');
   const priv = Netlify.env.get('VAPID_PRIVATE_KEY');
@@ -14,34 +14,22 @@ export default async () => {
   if (!pub || !priv) return;
 
   try {
-    const result = await searchMrt({
-      dep: w.dep,
-      arr: w.arr,
-      start: w.start,
-      end: w.end,
-      period: w.period
-    });
-
+    const result = await discoverMrt({ dep:w.dep, period:w.period, region:w.region, targetPrice:w.targetPrice });
     const previous = w.prices || {};
-    const target = Number(w.targetPrice || 0);
+    const fresh = result.rows.filter(x => !previous[x.key]);
 
-    const newlyQualified = result.rows.filter(x => {
-      const old = Number(previous[x.key] || 0);
-      return x.totalPrice > 0 && x.totalPrice <= target && (old === 0 || old > target);
-    });
-
-    if (newlyQualified.length) {
+    if (fresh.length) {
       webpush.setVapidDetails(subject, pub, priv);
-      const best = [...newlyQualified].sort((a,b) => a.totalPrice - b.totalPrice)[0];
-      const more = newlyQualified.length > 1 ? ` 외 ${newlyQualified.length - 1}건` : '';
+      const best = [...fresh].sort((a,b)=>a.totalPrice-b.totalPrice)[0];
+      const more = fresh.length > 1 ? ` 외 ${fresh.length-1}곳` : '';
       await webpush.sendNotification(w.subscription, JSON.stringify({
-        title: '✈️ 국제선 목표가 도달',
-        body: `${w.dep}→${w.arr} ${best.departureDate}~${best.returnDate} · ${best.totalPrice.toLocaleString('ko-KR')}원 · ${best.airline || '항공사 미표시'}${more}`,
+        title: '✈️ 새 해외 특가 발견',
+        body: `${best.cityName || best.toCity} · ${best.departureDate}~${best.returnDate} · ${best.totalPrice.toLocaleString('ko-KR')}원${more}`,
         url: '/intl-flight/'
       }));
     }
 
-    w.prices = Object.fromEntries(result.rows.map(x => [x.key, x.totalPrice]));
+    w.prices = Object.fromEntries(result.rows.map(x=>[x.key,x.totalPrice]));
     w.lastFares = result.rows;
     w.updatedAt = new Date().toISOString();
     await store.setJSON('watch', w);
