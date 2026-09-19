@@ -61,23 +61,38 @@ export async function searchMrt({ dep, arr, start, end, period }) {
   return {rows,cached:false,cachedAt:null};
 }
 
-async function airportMap() {
-  const cacheKey='airport-map-v1';
+async function airportIndex() {
+  const cacheKey='airport-index-v2';
   const cached=await cacheStore.get(cacheKey,{type:'json'});
-  if(cached?.at && cached?.map && Date.now()-new Date(cached.at).getTime()<24*60*60*1000) return cached.map;
+  if(cached?.at && cached?.byAirport && cached?.byCity && Date.now()-new Date(cached.at).getTime()<24*60*60*1000) return cached;
+
   const j=await post('/v1/products/flight/airports',{sort:'airportCode',order:'asc',size:10000,page:0});
-  const map={};
+  const byAirport={},byCity={};
+
   for(const x of (j?.data?.airports||[])){
-    const c=x?.airport?.code;
-    if(c) map[c]={
-      airportName:x?.airport?.koName||x?.airport?.enName||c,
+    const airportCode=x?.airport?.code;
+    const cityCode=x?.city?.code;
+    if(!airportCode) continue;
+
+    const meta={
+      airportCode,
+      airportName:x?.airport?.koName||x?.airport?.enName||airportCode,
+      cityCode:cityCode||'',
       cityName:x?.city?.koName||x?.city?.enName||'',
       countryCode:x?.country?.code||'',
       countryName:x?.country?.koName||x?.country?.enName||''
     };
+
+    byAirport[airportCode]=meta;
+    if(cityCode){
+      if(!byCity[cityCode]) byCity[cityCode]=[];
+      byCity[cityCode].push(meta);
+    }
   }
-  await cacheStore.setJSON(cacheKey,{at:new Date().toISOString(),map});
-  return map;
+
+  const value={at:new Date().toISOString(),byAirport,byCity};
+  await cacheStore.setJSON(cacheKey,value);
+  return value;
 }
 
 const SEA=['TH','VN','PH','MY','SG','ID','KH','LA','MM','BN','TL'];
@@ -115,35 +130,29 @@ function matchesToken(cc, token){
   if(token==='seasia') return SEA.includes(cc);
   if(token==='greater_china') return ['CN','HK','MO','TW'].includes(cc);
   if(token==='other_asia') return [...SOUTH_ASIA,...CENTRAL_ASIA,'MN'].includes(cc);
-
   if(token==='europe') return EUROPE.includes(cc);
   if(token==='western_europe') return WESTERN_EUROPE.includes(cc);
   if(token==='southern_europe') return SOUTHERN_EUROPE.includes(cc);
   if(token==='northern_europe') return NORTHERN_EUROPE.includes(cc);
   if(token==='eastern_europe') return EASTERN_EUROPE.includes(cc);
-
   if(token==='northamerica') return NORTH_AMERICA.includes(cc);
   if(token==='usa') return cc==='US';
   if(token==='canada') return cc==='CA';
   if(token==='mexico') return cc==='MX';
-
   if(token==='oceania') return OCEANIA.includes(cc);
   if(token==='australia') return AUSTRALIA.includes(cc);
   if(token==='newzealand') return NEW_ZEALAND.includes(cc);
   if(token==='south_pacific') return SOUTH_PACIFIC.includes(cc);
-
   if(token==='middleeast') return MIDDLE_EAST.includes(cc);
   if(token==='gulf') return GULF.includes(cc);
   if(token==='uae') return cc==='AE';
   if(token==='levant_turkey') return LEVANT_TURKEY.includes(cc);
   if(token==='other_middleeast') return OTHER_MIDDLE_EAST.includes(cc);
-
   if(token==='africa') return AFRICA.includes(cc);
   if(token==='north_africa') return NORTH_AFRICA.includes(cc);
   if(token==='east_africa') return EAST_AFRICA.includes(cc);
   if(token==='southern_africa') return SOUTHERN_AFRICA.includes(cc);
   if(token==='west_central_africa') return WEST_CENTRAL_AFRICA.includes(cc);
-
   return false;
 }
 
@@ -158,14 +167,52 @@ async function bulkLowest(dep, period) {
   const cacheKey=['discover-bulk',dep,period].join(':');
   const cached=await cacheStore.get(cacheKey,{type:'json'});
   if(cached?.at && Array.isArray(cached?.rows) && Date.now()-new Date(cached.at).getTime()<CACHE_MS) return {rows:cached.rows,cached:true};
+
   const j=await post('/v1/products/flight/calendar/bulk-lowest',{depCityCd:dep,period});
   const rows=(Array.isArray(j?.data)?j.data:[]).map(x=>({
     fromCity:x.fromCity,toCity:x.toCity,period:x.period,
     departureDate:x.departureDate,returnDate:x.returnDate,
     totalPrice:Number(x.totalPrice||0),averagePrice:Number(x.averagePrice||0)
   }));
+
   await cacheStore.setJSON(cacheKey,{at:new Date().toISOString(),rows});
   return {rows,cached:false};
+}
+
+function resolveBulkDestinations(rows,index,region,targetPrice){
+  const resolved=[];
+  let unresolvedCount=0;
+
+  for(const x of rows){
+    if(!(x.totalPrice>0 && x.totalPrice<=targetPrice)) continue;
+
+    const direct=index.byAirport[x.toCity];
+    const airports=direct?[direct]:(index.byCity[x.toCity]||[]);
+
+    if(!airports.length){
+      unresolvedCount++;
+      continue;
+    }
+
+    for(const meta of airports){
+      if(!inRegions(meta,region)) continue;
+      resolved.push({
+        ...x,
+        ...meta,
+        toCity:meta.airportCode,
+        sourceDestinationCode:x.toCity,
+        referenceLowest:x.totalPrice
+      });
+    }
+  }
+
+  const dedup=new Map();
+  for(const x of resolved){
+    const prev=dedup.get(x.airportCode);
+    if(!prev || x.referenceLowest<prev.referenceLowest) dedup.set(x.airportCode,x);
+  }
+
+  return {resolved:[...dedup.values()],unresolvedCount};
 }
 
 export async function discoverMrt({dep,period,region='all',targetPrice=99999999,departureDate}) {
@@ -174,25 +221,45 @@ export async function discoverMrt({dep,period,region='all',targetPrice=99999999,
 
   const windowStart=shiftDate(departureDate,-2);
   const windowEnd=shiftDate(departureDate,2);
-  const bulk=await bulkLowest(dep,period);
-  const amap=await airportMap();
 
-  const candidates=bulk.rows
-    .map(x=>({...x,...(amap[x.toCity]||{airportName:x.toCity,cityName:'',countryCode:'',countryName:''})}))
-    .filter(x=>inRegions(x,region))
-    .filter(x=>x.totalPrice>0 && x.totalPrice<=targetPrice);
+  const [bulk,index]=await Promise.all([bulkLowest(dep,period),airportIndex()]);
+  const expanded=resolveBulkDestinations(bulk.rows,index,region,targetPrice);
+  const candidates=expanded.resolved;
 
   const checked=await Promise.allSettled(candidates.map(async c=>{
-    const exact=await searchMrt({dep,arr:c.toCity,start:windowStart,end:windowEnd,period});
+    const exact=await searchMrt({dep,arr:c.airportCode,start:windowStart,end:windowEnd,period});
     return exact.rows
       .filter(x=>x.totalPrice>0 && x.totalPrice<=targetPrice)
-      .map(x=>({...x,airportName:c.airportName,cityName:c.cityName,countryCode:c.countryCode,countryName:c.countryName,referenceLowest:c.totalPrice}));
+      .map(x=>({
+        ...x,
+        toCity:c.airportCode,
+        airportName:c.airportName,
+        cityName:c.cityName,
+        countryCode:c.countryCode,
+        countryName:c.countryName,
+        sourceDestinationCode:c.sourceDestinationCode,
+        referenceLowest:c.referenceLowest
+      }));
   }));
+
+  const successCount=checked.filter(x=>x.status==='fulfilled').length;
+  const failedCount=checked.length-successCount;
 
   const rows=checked
     .filter(x=>x.status==='fulfilled')
     .flatMap(x=>x.value||[])
     .sort((a,b)=>a.departureDate.localeCompare(b.departureDate)||a.totalPrice-b.totalPrice);
 
-  return {rows,cached:bulk.cached,departureDate,windowStart,windowEnd,candidateCount:candidates.length};
+  return {
+    rows,
+    cached:bulk.cached,
+    departureDate,
+    windowStart,
+    windowEnd,
+    bulkCount:bulk.rows.length,
+    resolvedAirportCount:candidates.length,
+    unresolvedCount:expanded.unresolvedCount,
+    successCount,
+    failedCount
+  };
 }
