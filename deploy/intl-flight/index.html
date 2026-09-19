@@ -9,7 +9,7 @@
     <div class="field"><label>출발공항</label><input id="dDep" value="ICN" maxlength="3"></div>
     <div class="field"><label>여행 출발일</label><input id="dDepartureDate" type="date"></div>
     <div class="field"><label>여행기간</label><select id="dPeriod"><option value="3">3일</option><option value="4">4일</option><option value="5" selected>5일</option><option value="6">6일</option><option value="7">7일</option></select></div>
-    <div class="field"><label>목적지 범위</label><select id="dRegion"><option value="all">전체 해외</option><option value="japan">일본</option><option value="seasia">동남아</option><option value="japan_seasia">일본 + 동남아</option></select></div>
+    <div class="field"><label>목적지 범위</label><select id="dRegion"><option value="all">전체 해외</option><option value="japan">일본</option><option value="seasia">동남아</option><option value="japan_seasia">일본 + 동남아</option><option value="europe">유럽</option><option value="usa">미국</option><option value="europe_usa">유럽 + 미국</option></select></div>
     <div class="field"><label>목표 왕복가격(원)</label><input id="dTarget" type="number" min="1000" step="10000" value="300000"></div>
   </div>
   <div id="conditionSummary" class="summary"></div>
@@ -51,7 +51,7 @@ const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&
 const iso=d=>d.toISOString().slice(0,10);
 const base=new Date(); base.setDate(base.getDate()+14); const end=new Date(base); end.setDate(end.getDate()+14);
 
-function regionLabel(v){return({all:'전체 해외',japan:'일본',seasia:'동남아',japan_seasia:'일본 + 동남아'})[v]||'전체 해외'}
+function regionLabel(v){return({all:'전체 해외',japan:'일본',seasia:'동남아',japan_seasia:'일본 + 동남아',europe:'유럽',usa:'미국',europe_usa:'유럽 + 미국'})[v]||'전체 해외'}
 function discoverParams(){return{dep:$('dDep').value.trim().toUpperCase(),departureDate:$('dDepartureDate').value,period:+$('dPeriod').value,region:$('dRegion').value,targetPrice:+$('dTarget').value}}
 function routeParams(){return{dep:$('rDep').value.trim().toUpperCase(),arr:$('rArr').value.trim().toUpperCase(),start:$('rStart').value,end:$('rEnd').value,period:+$('rPeriod').value}}
 function saveForms(){localStorage.setItem(KEY,JSON.stringify(discoverParams()));localStorage.setItem(ROUTE_KEY,JSON.stringify(routeParams()))}
