@@ -1,143 +1,170 @@
 <!doctype html><html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="theme-color" content="#071827"><title>알려줘 · 해외 특가</title>
 <style>
-:root{font-family:system-ui,-apple-system,"Apple SD Gothic Neo",sans-serif;color:#eef7ff;background:#071827}*{box-sizing:border-box}body{margin:0}.app{max-width:760px;margin:auto;padding:22px 15px 60px}h1{font-size:28px;margin:6px 0 8px}h2{font-size:18px;margin:0 0 12px}.ey{font-size:12px;font-weight:800;letter-spacing:.12em;color:#7db7ff}.lead,.muted{color:#9fb3c7;font-size:14px;line-height:1.55}.card{background:#0e2235;border:1px solid #1e3b54;border-radius:17px;padding:17px;margin:14px 0}.hero{background:linear-gradient(135deg,#123654,#0e2235)}.grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}.field label,.section-label{display:block;color:#a9bbca;font-size:12px;margin:0 0 7px}.field input,.field select{width:100%;background:#081b2c;border:1px solid #294a65;border-radius:10px;padding:12px;color:#fff;font-size:16px}button{border:0;border-radius:11px;padding:13px;font-size:15px;font-weight:850;background:#7db7ff;color:#061522;cursor:pointer}button.full{width:100%;margin-top:10px}button.secondary{background:#1c3a52;color:#e6f2ff}.status{padding:12px;border-radius:11px;background:#091b2b;margin-top:11px;color:#b8c8d7;font-size:13px;line-height:1.5}.summary{padding:13px;border-radius:12px;background:#0a1b2c;border:1px solid #244866;margin-top:12px}.summary b{display:block;font-size:15px;margin-bottom:5px}.region-wrap{margin-top:12px}.region-buttons,.date-tabs{display:flex;gap:7px;flex-wrap:wrap}.region-buttons button,.date-tabs button{width:auto;margin:0;padding:9px 11px;background:#112b41;color:#c6d7e6;border:1px solid #284b66;font-size:13px}.region-buttons button.active,.date-tabs button.active{background:#7db7ff;color:#071827;border-color:#7db7ff}.subregions{margin-top:8px;padding-top:8px;border-top:1px solid #244159}.selected-regions{margin-top:9px;color:#8fc2ff;font-size:12px}.fare{display:block;padding:13px 0;border-bottom:1px solid #203b50;color:inherit;text-decoration:none}.fare:last-child{border:0}.top{display:flex;justify-content:space-between;gap:10px;font-weight:800}.price{color:#78e0b2;white-space:nowrap}.small{font-size:12px;color:#97acbf;margin-top:5px}.book{display:inline-block;margin-top:7px;color:#8fc2ff;font-size:12px;font-weight:800}.ok{color:#78e0b2}.warn{color:#ffd17a}.tag{display:inline-block;padding:4px 8px;border-radius:999px;background:#173851;color:#b8d9ff;font-size:11px;margin-right:5px}.note{font-size:12px;line-height:1.55;color:#b5c5d5;background:#0a1a2a;padding:11px;border-radius:10px}.watch-on{background:#1f8f66!important;color:white!important}.date-tabs{margin:12px 0 4px;overflow-x:auto;flex-wrap:nowrap;padding-bottom:4px}.date-tabs button{white-space:nowrap}.empty{padding:18px 0;color:#8ea4b8}@media(max-width:520px){.grid{grid-template-columns:1fr}h1{font-size:25px}}
+:root{font-family:system-ui,-apple-system,"Apple SD Gothic Neo",sans-serif;color:#f3f8fc;background:#071827}*{box-sizing:border-box}body{margin:0;background:#071827}.app{max-width:760px;margin:auto;padding:20px 14px 60px}.ey{font-size:12px;font-weight:900;letter-spacing:.12em;color:#7db7ff}h1{font-size:29px;line-height:1.18;margin:7px 0 8px}h2{font-size:18px;margin:0}.lead,.muted{color:#9eb2c4;font-size:14px;line-height:1.55}.card{background:#0d2134;border:1px solid #1d3b54;border-radius:18px;padding:16px;margin:13px 0}.hero{background:linear-gradient(145deg,#123958,#0d2134)}.stephead{display:flex;align-items:center;gap:9px;margin-bottom:14px}.step{display:inline-flex;width:27px;height:27px;align-items:center;justify-content:center;border-radius:50%;background:#7db7ff;color:#061522;font-weight:900;font-size:13px}.grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}.field label,.section-label{display:block;color:#a9bbca;font-size:12px;margin:0 0 7px}.field input,.field select{width:100%;background:#071a2a;border:1px solid #2a4d67;border-radius:11px;padding:12px;color:#fff;font-size:16px;min-height:46px}.region-block{margin-top:15px;padding-top:14px;border-top:1px solid #214158}.chips{display:flex;gap:7px;flex-wrap:wrap}.chip{border:1px solid #2b526e;background:#102a40;color:#c7d8e7;border-radius:999px;padding:9px 12px;font-size:13px;font-weight:750;cursor:pointer}.chip.active{background:#7db7ff;border-color:#7db7ff;color:#071827}.subpanel{margin-top:10px;padding:11px;background:#091a2a;border:1px solid #1e3c53;border-radius:13px}.subpanel-title{font-size:12px;color:#91a8bb;margin-bottom:8px}.selected{margin-top:10px;display:flex;gap:6px;flex-wrap:wrap}.selected .tagchip{font-size:12px;padding:6px 9px;background:#173b56;border-radius:999px;color:#b9dcff}.summary{padding:13px;border-radius:13px;background:#081b2b;border:1px solid #294c67;margin-top:14px}.summary-title{font-size:12px;color:#8ca7bb;margin-bottom:6px}.summary-main{font-size:14px;line-height:1.55;font-weight:700}.actions{display:grid;grid-template-columns:1fr 1fr;gap:9px;margin-top:11px}button.action{border:0;border-radius:12px;padding:13px;font-size:15px;font-weight:900;cursor:pointer;background:#7db7ff;color:#061522;min-height:48px}button.action.secondary{background:#1b3951;color:#e6f1fa}button.action.watch-on{background:#1f8f66;color:#fff}.status{padding:11px 12px;border-radius:11px;background:#081a2a;margin-top:10px;color:#a9bdcd;font-size:13px;line-height:1.5}.ok{color:#6fe0ae}.warn{color:#ffd179}.date-tabs{display:flex;gap:7px;overflow-x:auto;padding:4px 0 9px}.date-tabs button{white-space:nowrap;border:1px solid #284c67;background:#102a40;color:#c7d8e7;border-radius:999px;padding:8px 11px;font-size:12px;font-weight:800}.date-tabs button.active{background:#7db7ff;color:#071827;border-color:#7db7ff}.fare{display:block;padding:14px 0;border-bottom:1px solid #203d52;color:inherit;text-decoration:none}.fare:last-child{border:0}.top{display:flex;justify-content:space-between;gap:12px;align-items:flex-start;font-weight:850}.price{color:#72ddb0;white-space:nowrap}.small{font-size:12px;color:#95aabd;margin-top:5px}.book{display:inline-block;margin-top:7px;color:#8fc2ff;font-size:12px;font-weight:850}.country{font-size:11px;padding:3px 7px;border-radius:999px;background:#17364d;color:#b8d7ec;margin-left:5px}.empty{padding:18px 0;color:#8fa5b8}.note{font-size:12px;line-height:1.55;color:#aebfd0;background:#081929;padding:11px;border-radius:10px}.advanced summary{cursor:pointer;font-weight:850;color:#d8e8f5;padding:3px 0}.advanced[open] summary{margin-bottom:12px}@media(max-width:520px){.grid,.actions{grid-template-columns:1fr}h1{font-size:26px}.app{padding-left:12px;padding-right:12px}}
 </style></head><body><main class="app">
-<div class="ey">알려줘 · 목적지 미정 특가</div><h1>아무 데나 싸게 나오면 알려줘</h1>
-<p class="lead">여행 출발일을 기준으로 앞뒤 2일, 총 5개 출발일을 비교해 조건에 맞는 해외 여행지를 찾고 가격 변화를 감시합니다.</p>
+<div class="ey">알려줘 · 해외 특가 알림</div>
+<h1>조건만 정해두면<br>싸게 나왔을 때 알려드려요.</h1>
+<p class="lead">기준 출발일 앞뒤 2일을 비교하고, 선택한 지역에서 목표가격 이하 왕복 항공권을 찾습니다.</p>
 
 <section class="card hero">
-  <h2>특가 조건</h2>
+  <div class="stephead"><span class="step">1</span><h2>여행 조건</h2></div>
   <div class="grid">
     <div class="field"><label>출발공항</label><input id="dDep" value="ICN" maxlength="3"></div>
     <div class="field"><label>여행 출발일</label><input id="dDepartureDate" type="date"></div>
     <div class="field"><label>여행기간</label><select id="dPeriod"><option value="3">3일</option><option value="4">4일</option><option value="5" selected>5일</option><option value="6">6일</option><option value="7">7일</option></select></div>
-    <div class="field"><label>목표 왕복가격(원)</label><input id="dTarget" type="number" min="1000" step="10000" value="300000"></div>
+    <div class="field"><label>목표 왕복가격</label><input id="dTarget" type="number" min="1000" step="10000" value="300000"></div>
   </div>
 
-  <div class="region-wrap">
-    <span class="section-label">목적지 대륙 선택 · 여러 개 선택 가능</span>
-    <div class="region-buttons" id="continentButtons">
-      <button type="button" data-region="all">전체</button>
-      <button type="button" data-region="asia">아시아</button>
-      <button type="button" data-region="europe">유럽</button>
-      <button type="button" data-region="northamerica">북미</button>
-      <button type="button" data-region="oceania">오세아니아</button>
-      <button type="button" data-region="middleeast">중동</button>
-      <button type="button" data-region="africa">아프리카</button>
+  <div class="region-block">
+    <span class="section-label">대륙 선택 · 여러 개 가능</span>
+    <div class="chips" id="continentButtons"></div>
+    <div id="subpanel" class="subpanel" hidden>
+      <div id="subpanelTitle" class="subpanel-title"></div>
+      <div class="chips" id="subregionButtons"></div>
     </div>
-    <div class="region-buttons subregions" id="subregionButtons">
-      <button type="button" data-region="japan" data-parent="asia">일본</button>
-      <button type="button" data-region="seasia" data-parent="asia">동남아</button>
-      <button type="button" data-region="greater_china" data-parent="asia">중국·홍콩·대만</button>
-      <button type="button" data-region="other_asia" data-parent="asia">기타 아시아</button>
-      <button type="button" data-region="usa" data-parent="northamerica">미국</button>
-      <button type="button" data-region="canada" data-parent="northamerica">캐나다</button>
-    </div>
-    <div id="selectedRegions" class="selected-regions"></div>
+    <div id="selectedRegions" class="selected"></div>
   </div>
 
   <div id="conditionSummary" class="summary"></div>
-  <button id="discover" class="full">±2일 최저가 찾기</button>
-  <button id="watch" class="full secondary">🔔 푸시 알림 받기</button>
-  <button id="stop" class="full secondary">알림 끄기</button>
-  <div id="state" class="status">조건을 설정한 뒤 조회하세요.</div>
+  <div class="actions">
+    <button id="discover" class="action">최저가 찾기</button>
+    <button id="watch" class="action secondary">🔔 푸시 알림 받기</button>
+  </div>
+  <button id="stop" class="action secondary" style="width:100%;margin-top:9px">알림 끄기</button>
+  <div id="state" class="status">조건을 설정한 뒤 검색하거나 알림을 켜세요.</div>
 </section>
 
 <section class="card">
-  <h2>조건에 맞는 여행지</h2>
+  <div class="stephead"><span class="step">2</span><h2>날짜별 결과</h2></div>
   <div id="dateTabs" class="date-tabs"></div>
   <div id="discoverResults" class="muted">아직 조회하지 않았습니다.</div>
 </section>
 
 <section class="card">
-  <h2>목적지 직접 지정</h2>
-  <p class="muted">특정 공항 노선의 날짜별 참고 최저가도 조회할 수 있습니다.</p>
-  <div class="grid">
-    <div class="field"><label>출발공항</label><input id="rDep" value="ICN" maxlength="3"></div>
-    <div class="field"><label>도착공항</label><input id="rArr" value="NRT" maxlength="3"></div>
-    <div class="field"><label>출발일 시작</label><input id="rStart" type="date"></div>
-    <div class="field"><label>출발일 종료</label><input id="rEnd" type="date"></div>
-    <div class="field"><label>여행기간</label><select id="rPeriod"><option value="3">3일</option><option value="4">4일</option><option value="5" selected>5일</option><option value="6">6일</option><option value="7">7일</option></select></div>
-  </div>
-  <button id="routeSearch" class="full secondary">특정 노선 최저가 조회</button>
-  <div id="routeState" class="status">노선을 입력해 조회하세요.</div>
-  <div id="routeResults" class="muted" style="margin-top:8px"></div>
+  <details class="advanced">
+    <summary>목적지 공항 직접 지정하기</summary>
+    <p class="muted">공항코드를 알고 있을 때 특정 노선만 조회합니다.</p>
+    <div class="grid">
+      <div class="field"><label>출발공항</label><input id="rDep" value="ICN" maxlength="3"></div>
+      <div class="field"><label>도착공항</label><input id="rArr" value="NRT" maxlength="3"></div>
+      <div class="field"><label>출발일 시작</label><input id="rStart" type="date"></div>
+      <div class="field"><label>출발일 종료</label><input id="rEnd" type="date"></div>
+      <div class="field"><label>여행기간</label><select id="rPeriod"><option value="3">3일</option><option value="4">4일</option><option value="5" selected>5일</option><option value="6">6일</option><option value="7">7일</option></select></div>
+    </div>
+    <button id="routeSearch" class="action secondary" style="width:100%;margin-top:10px">특정 노선 조회</button>
+    <div id="routeState" class="status">공항코드를 입력해 조회하세요.</div>
+    <div id="routeResults" class="muted" style="margin-top:8px"></div>
+  </details>
 </section>
 
-<section class="card">
-  <div class="note">마이리얼트립 API 가격은 실시간 확정 판매가가 아니라 내부 검색 과정에서 수집·저장된 참고 최저가입니다. 여행지를 누르면 같은 노선·날짜의 마이리얼트립 실시간 항공권 검색결과로 이동합니다. 푸시 알림을 켜면 앱을 닫아도 1시간마다 조건을 감시합니다.</div>
-</section>
+<section class="card"><div class="note">마이리얼트립 API의 가격은 참고 최저가이며 실제 판매가는 예약 화면에서 달라질 수 있습니다. 결과를 누르면 해당 날짜와 노선의 마이리얼트립 실시간 항공권 검색으로 이동합니다. 푸시 알림은 앱을 닫아도 1시간마다 감시합니다.</div></section>
 </main>
 <script>
 const $=id=>document.getElementById(id);
-const KEY='intl_discover_form_v4',ROUTE_KEY='intl_route_form_v1';
+const KEY='intl_discover_form_v5',ROUTE_KEY='intl_route_form_v1';
 const money=n=>n?Number(n).toLocaleString('ko-KR')+'원':'가격 없음';
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const iso=d=>d.toISOString().slice(0,10);
 const base=new Date();base.setDate(base.getDate()+14);const end=new Date(base);end.setDate(end.getDate()+14);
-const regionNames={all:'전체',asia:'아시아',europe:'유럽',northamerica:'북미',oceania:'오세아니아',middleeast:'중동',africa:'아프리카',japan:'일본',seasia:'동남아',greater_china:'중국·홍콩·대만',other_asia:'기타 아시아',usa:'미국',canada:'캐나다'};
-let selectedRegions=['all'],lastRows=[],activeDate='all',lastWindow=[];
+
+const continents=[
+  ['all','전체'],['asia','아시아'],['europe','유럽'],['northamerica','북미'],
+  ['oceania','오세아니아'],['middleeast','중동'],['africa','아프리카']
+];
+const subregions={
+  asia:[['japan','일본'],['seasia','동남아'],['greater_china','중국·홍콩·대만'],['other_asia','기타 아시아']],
+  europe:[['western_europe','서유럽'],['southern_europe','남유럽'],['northern_europe','북유럽'],['eastern_europe','동유럽']],
+  northamerica:[['usa','미국'],['canada','캐나다'],['mexico','멕시코']],
+  oceania:[['australia','호주'],['newzealand','뉴질랜드'],['south_pacific','남태평양']],
+  middleeast:[['uae','UAE'],['gulf','걸프지역'],['levant_turkey','터키·레반트'],['other_middleeast','기타 중동']],
+  africa:[['north_africa','북아프리카'],['east_africa','동아프리카'],['southern_africa','남아프리카'],['west_central_africa','서·중앙아프리카']]
+};
+const names=Object.fromEntries([...continents,...Object.values(subregions).flat()]);
+let selectedRegions=['all'],focusedContinent=null,lastRows=[],activeDate='all',lastWindow=[];
 
 function dateAdd(date,delta){const [y,m,d]=date.split('-').map(Number);return new Date(Date.UTC(y,m-1,d)+delta*86400000).toISOString().slice(0,10)}
 function dateLabel(v){const [,m,d]=v.split('-');return Number(m)+'/'+Number(d)}
 function discoverParams(){return{dep:$('dDep').value.trim().toUpperCase(),departureDate:$('dDepartureDate').value,period:+$('dPeriod').value,region:selectedRegions.join(','),targetPrice:+$('dTarget').value}}
 function routeParams(){return{dep:$('rDep').value.trim().toUpperCase(),arr:$('rArr').value.trim().toUpperCase(),start:$('rStart').value,end:$('rEnd').value,period:+$('rPeriod').value}}
 function saveForms(){localStorage.setItem(KEY,JSON.stringify({...discoverParams(),regions:selectedRegions}));localStorage.setItem(ROUTE_KEY,JSON.stringify(routeParams()))}
-function regionText(){return selectedRegions.map(x=>regionNames[x]||x).join(' + ')}
-function updateRegionButtons(){
-  document.querySelectorAll('[data-region]').forEach(b=>b.classList.toggle('active',selectedRegions.includes(b.dataset.region)));
-  $('selectedRegions').textContent='선택: '+regionText();
-  updateSummary();
+function regionText(){return selectedRegions.map(x=>names[x]||x).join(' · ')}
+
+function renderContinents(){
+  $('continentButtons').innerHTML=continents.map(([k,label])=>`<button type="button" class="chip ${selectedRegions.includes(k)?'active':''}" data-continent="${k}">${label}</button>`).join('');
+  $('continentButtons').querySelectorAll('button').forEach(b=>b.addEventListener('click',()=>selectContinent(b.dataset.continent)));
 }
-function toggleRegion(token,parent){
-  if(token==='all'){selectedRegions=['all'];updateRegionButtons();saveForms();return}
+function renderSubregions(){
+  const box=$('subpanel'),btns=$('subregionButtons');
+  if(!focusedContinent||!subregions[focusedContinent]){box.hidden=true;return}
+  box.hidden=false;
+  $('subpanelTitle').textContent=(names[focusedContinent]||focusedContinent)+' 세부지역';
+  btns.innerHTML=subregions[focusedContinent].map(([k,label])=>`<button type="button" class="chip ${selectedRegions.includes(k)?'active':''}" data-sub="${k}">${label}</button>`).join('');
+  btns.querySelectorAll('button').forEach(b=>b.addEventListener('click',()=>toggleSubregion(b.dataset.sub)));
+}
+function selectContinent(token){
+  if(token==='all'){selectedRegions=['all'];focusedContinent=null;refreshRegions();return}
+  focusedContinent=token;
   selectedRegions=selectedRegions.filter(x=>x!=='all');
-  if(parent && selectedRegions.includes(parent)) selectedRegions=selectedRegions.filter(x=>x!==parent);
-  const childMap={asia:['japan','seasia','greater_china','other_asia'],northamerica:['usa','canada']};
-  if(childMap[token]) selectedRegions=selectedRegions.filter(x=>!childMap[token].includes(x));
-  if(selectedRegions.includes(token)) selectedRegions=selectedRegions.filter(x=>x!==token); else selectedRegions.push(token);
-  if(!selectedRegions.length) selectedRegions=['all'];
-  updateRegionButtons();saveForms();
+  const childKeys=(subregions[token]||[]).map(x=>x[0]);
+  const hasParent=selectedRegions.includes(token);
+  if(hasParent){selectedRegions=selectedRegions.filter(x=>x!==token)}
+  else{
+    selectedRegions=selectedRegions.filter(x=>!childKeys.includes(x));
+    selectedRegions.push(token);
+  }
+  if(!selectedRegions.length)selectedRegions=['all'];
+  refreshRegions();
 }
-function updateSummary(){const p=discoverParams();$('conditionSummary').innerHTML=`<b>현재 감시 조건</b><div class="muted">${esc(p.dep)} 출발 · ${esc(p.departureDate||'-')} ±2일 · ${p.period}일 일정 · ${esc(regionText())} · 왕복 ${money(p.targetPrice)} 이하</div>`;}
+function toggleSubregion(token){
+  if(!focusedContinent)return;
+  selectedRegions=selectedRegions.filter(x=>x!=='all'&&x!==focusedContinent);
+  if(selectedRegions.includes(token)) selectedRegions=selectedRegions.filter(x=>x!==token); else selectedRegions.push(token);
+  if(!selectedRegions.length)selectedRegions=['all'];
+  refreshRegions();
+}
+function refreshRegions(){
+  renderContinents();renderSubregions();
+  $('selectedRegions').innerHTML=selectedRegions.map(x=>`<span class="tagchip">${esc(names[x]||x)}</span>`).join('');
+  updateSummary();saveForms();
+}
+function updateSummary(){const p=discoverParams();$('conditionSummary').innerHTML=`<div class="summary-title">현재 조건</div><div class="summary-main">${esc(p.departureDate||'-')} ±2일 · ${p.period}일 · ${esc(regionText())}<br>왕복 ${money(p.targetPrice)} 이하</div>`;}
 function loadForms(){
   let d={},r={};try{d=JSON.parse(localStorage.getItem(KEY)||'{}')}catch{}try{r=JSON.parse(localStorage.getItem(ROUTE_KEY)||'{}')}catch{}
   $('dDep').value=d.dep||'ICN';$('dDepartureDate').value=d.departureDate||iso(base);$('dPeriod').value=String(d.period||5);$('dTarget').value=String(d.targetPrice||300000);
   selectedRegions=Array.isArray(d.regions)&&d.regions.length?d.regions:(d.region?String(d.region).split(','):['all']);
   $('rDep').value=r.dep||'ICN';$('rArr').value=r.arr||'NRT';$('rStart').value=r.start||iso(base);$('rEnd').value=r.end||iso(end);$('rPeriod').value=String(r.period||5);
-  updateRegionButtons();
+  refreshRegions();
 }
 function bookingUrl(f){const dep=String(f.fromCity||'ICN').toUpperCase(),arr=String(f.toCity||'').toUpperCase();const trip=encodeURIComponent('A.'+dep+'.A.'+arr+'.'+f.departureDate+'/A.'+arr+'.A.'+dep+'.'+f.returnDate);return 'https://air-web.myrealtrip.com/results?adult=1&tripType=ROUND_TRIP&trip='+trip}
 function renderTabs(){
   const tabs=['all',...lastWindow];
-  $('dateTabs').innerHTML=tabs.map(v=>`<button type="button" data-date="${v}" class="${activeDate===v?'active':''}">${v==='all'?'전체':dateLabel(v)}${v==='all'?'':' ('+lastRows.filter(x=>x.departureDate===v).length+')'}</button>`).join('');
-  $('dateTabs').querySelectorAll('button').forEach(b=>b.addEventListener('click',()=>{activeDate=b.dataset.date;renderTabs();renderDiscover();}));
+  $('dateTabs').innerHTML=tabs.map(v=>`<button type="button" data-date="${v}" class="${activeDate===v?'active':''}">${v==='all'?'전체':dateLabel(v)}${v==='all'?'':' · '+lastRows.filter(x=>x.departureDate===v).length}</button>`).join('');
+  $('dateTabs').querySelectorAll('button').forEach(b=>b.addEventListener('click',()=>{activeDate=b.dataset.date;renderTabs();renderDiscover()}));
 }
 function renderDiscover(){
   const rows=(activeDate==='all'?lastRows:lastRows.filter(x=>x.departureDate===activeDate)).slice().sort((a,b)=>a.totalPrice-b.totalPrice);
-  $('discoverResults').innerHTML=rows.length?rows.map(f=>`<a class="fare" href="${bookingUrl(f)}" target="_blank" rel="noopener"><div class="top"><span>${esc(f.cityName||f.airportName||f.toCity)} <span class="tag">${esc(f.countryName||f.countryCode||'')}</span></span><span class="price">${money(f.totalPrice)}</span></div><div class="small">${esc(f.toCity)} · ${esc(f.departureDate)} → ${esc(f.returnDate)} · ${esc(f.period)}일 일정</div><span class="book">실시간 항공권 확인 →</span></a>`).join(''):'<div class="empty">이 날짜에는 조건에 맞는 여행지가 없습니다.</div>';
+  $('discoverResults').innerHTML=rows.length?rows.map(f=>`<a class="fare" href="${bookingUrl(f)}" target="_blank" rel="noopener"><div class="top"><span>${esc(f.cityName||f.airportName||f.toCity)} <span class="country">${esc(f.countryName||f.countryCode||'')}</span></span><span class="price">${money(f.totalPrice)}</span></div><div class="small">${esc(f.departureDate)} → ${esc(f.returnDate)} · ${esc(f.toCity)} · ${esc(f.period)}일</div><span class="book">실시간 항공권 확인 →</span></a>`).join(''):'<div class="empty">이 날짜에는 조건에 맞는 여행지가 없습니다.</div>';
 }
-function renderRoute(rows){$('routeResults').innerHTML=rows.length?rows.map(f=>`<a class="fare" href="${bookingUrl(f)}" target="_blank" rel="noopener"><div class="top"><span>${esc(f.departureDate)} → ${esc(f.returnDate)}</span><span class="price">${money(f.totalPrice)}</span></div><div class="small">${esc(f.airline||'항공사 미표시')} · ${esc(f.period)}일 일정</div><span class="book">실시간 항공권 확인 →</span></a>`).join(''):'조회된 최저가 데이터가 없습니다.'}
+function renderRoute(rows){$('routeResults').innerHTML=rows.length?rows.map(f=>`<a class="fare" href="${bookingUrl(f)}" target="_blank" rel="noopener"><div class="top"><span>${esc(f.departureDate)} → ${esc(f.returnDate)}</span><span class="price">${money(f.totalPrice)}</span></div><div class="small">${esc(f.airline||'항공사 미표시')} · ${esc(f.period)}일</div><span class="book">실시간 항공권 확인 →</span></a>`).join(''):'조회된 최저가 데이터가 없습니다.'}
 async function doDiscover(){
-  saveForms();updateSummary();const p=discoverParams();$('state').textContent='날짜별 최저가를 비교 중입니다…';
+  saveForms();updateSummary();const p=discoverParams();$('state').textContent='최저가를 비교 중입니다…';
   const qs=new URLSearchParams({dep:p.dep,departureDate:p.departureDate,period:String(p.period),region:p.region,targetPrice:String(p.targetPrice)});
   const r=await fetch('/api/intl-flight-discover?'+qs),j=await r.json();
   if(!r.ok){$('state').innerHTML='<span class="warn">'+esc(j.error||'조회 실패')+'</span>';return}
   lastRows=j.destinations||[];lastWindow=[];for(let i=0;i<5;i++)lastWindow.push(dateAdd(j.windowStart,i));
   if(lastRows.length){const cheapest=[...lastRows].sort((a,b)=>a.totalPrice-b.totalPrice)[0];activeDate=cheapest.departureDate}else activeDate='all';
   renderTabs();renderDiscover();
-  $('state').innerHTML=`<span class="ok">조회 성공</span> · ${j.windowStart}~${j.windowEnd} · 결과 ${j.count}건`;
+  $('state').innerHTML=`<span class="ok">조회 완료</span> · ${j.windowStart}~${j.windowEnd} · ${j.count}건`;
 }
-async function doRoute(){saveForms();const p=routeParams();$('routeState').textContent='특정 노선 최저가를 조회 중입니다…';const qs=new URLSearchParams({dep:p.dep,arr:p.arr,start:p.start,end:p.end,period:String(p.period)});const r=await fetch('/api/intl-flight-search?'+qs),j=await r.json();if(!r.ok){$('routeState').innerHTML='<span class="warn">'+esc(j.error||'조회 실패')+'</span>';return}$('routeState').innerHTML=`<span class="ok">조회 성공</span> · ${j.count}건 ${j.cached?'· 30분 캐시 사용':''}`;renderRoute(j.fares)}
+async function doRoute(){saveForms();const p=routeParams();$('routeState').textContent='조회 중입니다…';const qs=new URLSearchParams({dep:p.dep,arr:p.arr,start:p.start,end:p.end,period:String(p.period)});const r=await fetch('/api/intl-flight-search?'+qs),j=await r.json();if(!r.ok){$('routeState').innerHTML='<span class="warn">'+esc(j.error||'조회 실패')+'</span>';return}$('routeState').innerHTML=`<span class="ok">조회 완료</span> · ${j.count}건`;renderRoute(j.fares)}
 function b64(s){const p='='.repeat((4-s.length%4)%4),b=(s+p).replace(/-/g,'+').replace(/_/g,'/'),raw=atob(b);return Uint8Array.from([...raw].map(c=>c.charCodeAt(0)))}
 async function subscribe(){if(!('serviceWorker'in navigator)||!('PushManager'in window))throw Error('이 브라우저는 웹 푸시를 지원하지 않습니다.');const perm=await Notification.requestPermission();if(perm!=='granted')throw Error('알림 권한이 필요합니다.');const reg=await navigator.serviceWorker.register('./sw.js');await navigator.serviceWorker.ready;const cfg=await(await fetch('/api/config')).json();if(!cfg.vapidPublicKey)throw Error('VAPID_PUBLIC_KEY가 설정되지 않았습니다.');let sub=await reg.pushManager.getSubscription();if(!sub)sub=await reg.pushManager.subscribe({userVisibleOnly:true,applicationServerKey:b64(cfg.vapidPublicKey)});return sub.toJSON()}
-function setWatchUi(on){$('watch').classList.toggle('watch-on',on);$('watch').textContent=on?'🔔 푸시 알림 켜짐':'🔔 푸시 알림 받기'}
-document.querySelectorAll('[data-region]').forEach(b=>b.addEventListener('click',()=>toggleRegion(b.dataset.region,b.dataset.parent)));
+function setWatchUi(on){$('watch').classList.toggle('watch-on',on);$('watch').textContent=on?'🔔 알림 켜짐':'🔔 푸시 알림 받기'}
 ['dDep','dDepartureDate','dPeriod','dTarget','rDep','rArr','rStart','rEnd','rPeriod'].forEach(id=>$(id).addEventListener('change',()=>{saveForms();if(id.startsWith('d'))updateSummary()}));
 $('discover').onclick=()=>doDiscover().catch(e=>$('state').textContent=e.message);
 $('routeSearch').onclick=()=>doRoute().catch(e=>$('routeState').textContent=e.message);
-$('watch').onclick=async()=>{try{saveForms();updateSummary();const p=discoverParams();$('state').textContent='푸시 알림을 등록 중입니다…';const subscription=await subscribe();const r=await fetch('/api/intl-flight-watch',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({...p,subscription})}),j=await r.json();if(!r.ok)throw Error(j.error||'등록 실패');setWatchUi(true);$('state').innerHTML=`<span class="ok">🔔 푸시 알림 켜짐</span><br>${esc(p.departureDate)} ±2일 · ${esc(regionText())} · ${money(p.targetPrice)} 이하 · 1시간 감시`;await doDiscover()}catch(e){$('state').innerHTML='<span class="warn">'+esc(e.message)+'</span>'}};
+$('watch').onclick=async()=>{try{saveForms();updateSummary();const p=discoverParams();$('state').textContent='푸시 알림을 등록 중입니다…';const subscription=await subscribe();const r=await fetch('/api/intl-flight-watch',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({...p,subscription})}),j=await r.json();if(!r.ok)throw Error(j.error||'등록 실패');setWatchUi(true);$('state').innerHTML=`<span class="ok">🔔 알림 켜짐</span><br>${esc(p.departureDate)} ±2일 · ${esc(regionText())} · ${money(p.targetPrice)} 이하 · 1시간 감시`;await doDiscover()}catch(e){$('state').innerHTML='<span class="warn">'+esc(e.message)+'</span>'}};
 $('stop').onclick=async()=>{await fetch('/api/intl-flight-watch',{method:'DELETE'});setWatchUi(false);$('state').textContent='푸시 알림을 껐습니다.'};
 loadForms();setWatchUi(false);
-fetch('/api/intl-flight-watch').then(r=>r.json()).then(j=>{if(j.enabled&&j.mode==='discover'){selectedRegions=String(j.region||'all').split(',').filter(Boolean);$('dDep').value=j.dep||$('dDep').value;$('dDepartureDate').value=j.departureDate||$('dDepartureDate').value;$('dPeriod').value=String(j.period||$('dPeriod').value);$('dTarget').value=String(j.targetPrice||$('dTarget').value);updateRegionButtons();saveForms();setWatchUi(true);$('state').innerHTML=`<span class="ok">🔔 푸시 알림 켜짐</span><br>${esc(j.departureDate)} ±2일 · ${esc(regionText())} · ${money(j.targetPrice)} 이하 · 1시간 감시`}}).catch(()=>{});
+fetch('/api/intl-flight-watch').then(r=>r.json()).then(j=>{if(j.enabled&&j.mode==='discover'){selectedRegions=String(j.region||'all').split(',').filter(Boolean);$('dDep').value=j.dep||$('dDep').value;$('dDepartureDate').value=j.departureDate||$('dDepartureDate').value;$('dPeriod').value=String(j.period||$('dPeriod').value);$('dTarget').value=String(j.targetPrice||$('dTarget').value);refreshRegions();setWatchUi(true);$('state').innerHTML=`<span class="ok">🔔 알림 켜짐</span><br>${esc(j.departureDate)} ±2일 · ${esc(regionText())} · ${money(j.targetPrice)} 이하 · 1시간 감시`}}).catch(()=>{});
 </script></body></html>
