@@ -26,6 +26,13 @@ function validatePeriod(v) {
   return n;
 }
 
+function shiftDate(date, delta) {
+  validateDate(date);
+  const [y,m,d] = date.split('-').map(Number);
+  const t = Date.UTC(y,m-1,d) + delta * 86400000;
+  return new Date(t).toISOString().slice(0,10);
+}
+
 async function post(path, body) {
   const r = await fetch('https://partner-ext-api.myrealtrip.com' + path, {
     method: 'POST',
@@ -77,28 +84,66 @@ function inRegion(meta, region){
   return true;
 }
 
-export async function discoverMrt({ dep, period, region='all', targetPrice=99999999 }) {
-  dep = cleanAirport(dep); period = validatePeriod(period); targetPrice = Math.max(1,Number(targetPrice||0));
+async function bulkLowest(dep, period) {
+  const cacheKey = ['discover-bulk',dep,period].join(':');
+  const cached = await cacheStore.get(cacheKey,{type:'json'});
+  if(cached?.at && Array.isArray(cached?.rows) && Date.now()-new Date(cached.at).getTime()<CACHE_MS) return {rows:cached.rows,cached:true};
+  const j = await post('/v1/products/flight/calendar/bulk-lowest',{depCityCd:dep,period});
+  const rows=(Array.isArray(j?.data)?j.data:[]).map(x=>({
+    fromCity:x.fromCity,toCity:x.toCity,period:x.period,
+    departureDate:x.departureDate,returnDate:x.returnDate,
+    totalPrice:Number(x.totalPrice||0),averagePrice:Number(x.averagePrice||0)
+  }));
+  await cacheStore.setJSON(cacheKey,{at:new Date().toISOString(),rows});
+  return {rows,cached:false};
+}
+
+export async function discoverMrt({ dep, period, region='all', targetPrice=99999999, departureDate }) {
+  dep = cleanAirport(dep);
+  period = validatePeriod(period);
+  departureDate = validateDate(departureDate);
+  targetPrice = Math.max(1,Number(targetPrice||0));
   region = ['all','japan','seasia'].includes(region) ? region : 'all';
-  const cacheKey = ['discover',dep,period].join(':');
-  let raw = await cacheStore.get(cacheKey,{type:'json'});
-  let rows;
-  let cached=false;
-  if(raw?.at && Array.isArray(raw?.rows) && Date.now()-new Date(raw.at).getTime()<CACHE_MS){ rows=raw.rows; cached=true; }
-  else {
-    const j = await post('/v1/products/flight/calendar/bulk-lowest',{depCityCd:dep,period});
-    rows=(Array.isArray(j?.data)?j.data:[]).map(x=>({
-      key:[x.toCity,x.departureDate,x.returnDate].join('|'),
-      fromCity:x.fromCity,toCity:x.toCity,period:x.period,
-      departureDate:x.departureDate,returnDate:x.returnDate,
-      totalPrice:Number(x.totalPrice||0),averagePrice:Number(x.averagePrice||0)
-    }));
-    await cacheStore.setJSON(cacheKey,{at:new Date().toISOString(),rows});
-  }
-  const amap=await airportMap();
-  const enriched=rows.map(x=>({...x,...(amap[x.toCity]||{airportName:x.toCity,cityName:'',countryCode:'',countryName:''})}))
+
+  const windowStart = shiftDate(departureDate,-2);
+  const windowEnd = shiftDate(departureDate,2);
+
+  const bulk = await bulkLowest(dep,period);
+  const amap = await airportMap();
+
+  // 전체 기간 최저가가 목표가격보다 높은 목적지는 ±2일 창에서도 목표가 이하가 될 수 없으므로 안전하게 제외합니다.
+  const candidates = bulk.rows
+    .map(x=>({...x,...(amap[x.toCity]||{airportName:x.toCity,cityName:'',countryCode:'',countryName:''})}))
     .filter(x=>inRegion(x,region))
-    .filter(x=>x.totalPrice>0 && x.totalPrice<=targetPrice)
+    .filter(x=>x.totalPrice>0 && x.totalPrice<=targetPrice);
+
+  const checked = await Promise.allSettled(candidates.map(async c=>{
+    const exact = await searchMrt({dep,arr:c.toCity,start:windowStart,end:windowEnd,period});
+    const best = exact.rows
+      .filter(x=>x.totalPrice>0 && x.totalPrice<=targetPrice)
+      .sort((a,b)=>a.totalPrice-b.totalPrice)[0];
+    if(!best) return null;
+    return {
+      ...best,
+      airportName:c.airportName,
+      cityName:c.cityName,
+      countryCode:c.countryCode,
+      countryName:c.countryName,
+      referenceLowest:c.totalPrice
+    };
+  }));
+
+  const rows = checked
+    .filter(x=>x.status==='fulfilled' && x.value)
+    .map(x=>x.value)
     .sort((a,b)=>a.totalPrice-b.totalPrice);
-  return {rows:enriched,cached};
+
+  return {
+    rows,
+    cached: bulk.cached,
+    departureDate,
+    windowStart,
+    windowEnd,
+    candidateCount:candidates.length
+  };
 }
