@@ -62,7 +62,7 @@ export async function searchMrt({ dep, arr, start, end, period }) {
 }
 
 async function airportIndex() {
-  const cacheKey='airport-index-v2';
+  const cacheKey='airport-index-v3';
   const cached=await cacheStore.get(cacheKey,{type:'json'});
   if(cached?.at && cached?.byAirport && cached?.byCity && Date.now()-new Date(cached.at).getTime()<24*60*60*1000) return cached;
 
@@ -79,7 +79,7 @@ async function airportIndex() {
       airportName:x?.airport?.koName||x?.airport?.enName||airportCode,
       cityCode:cityCode||'',
       cityName:x?.city?.koName||x?.city?.enName||'',
-      countryCode:x?.country?.code||'',
+      countryCode:x?.isoCode||x?.country?.code||'',
       countryName:x?.country?.koName||x?.country?.enName||''
     };
 
