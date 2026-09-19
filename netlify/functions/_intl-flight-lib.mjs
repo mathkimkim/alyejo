@@ -76,11 +76,14 @@ async function airportMap() {
   return map;
 }
 
+const SEA = ['TH','VN','PH','MY','SG','ID','KH','LA','MM','BN','TL'];
+
 function inRegion(meta, region){
   if(region==='all') return true;
   const cc=meta?.countryCode||'';
   if(region==='japan') return cc==='JP';
-  if(region==='seasia') return ['TH','VN','PH','MY','SG','ID','KH','LA','MM','BN','TL'].includes(cc);
+  if(region==='seasia') return SEA.includes(cc);
+  if(region==='japan_seasia') return cc==='JP' || SEA.includes(cc);
   return true;
 }
 
@@ -103,7 +106,7 @@ export async function discoverMrt({ dep, period, region='all', targetPrice=99999
   period = validatePeriod(period);
   departureDate = validateDate(departureDate);
   targetPrice = Math.max(1,Number(targetPrice||0));
-  region = ['all','japan','seasia'].includes(region) ? region : 'all';
+  region = ['all','japan','seasia','japan_seasia'].includes(region) ? region : 'all';
 
   const windowStart = shiftDate(departureDate,-2);
   const windowEnd = shiftDate(departureDate,2);
@@ -111,7 +114,6 @@ export async function discoverMrt({ dep, period, region='all', targetPrice=99999
   const bulk = await bulkLowest(dep,period);
   const amap = await airportMap();
 
-  // 전체 기간 최저가가 목표가격보다 높은 목적지는 ±2일 창에서도 목표가 이하가 될 수 없으므로 안전하게 제외합니다.
   const candidates = bulk.rows
     .map(x=>({...x,...(amap[x.toCity]||{airportName:x.toCity,cityName:'',countryCode:'',countryName:''})}))
     .filter(x=>inRegion(x,region))
