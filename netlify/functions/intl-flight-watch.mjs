@@ -22,7 +22,9 @@ export default async (req) => {
     const dep = String(body.dep || 'ICN').toUpperCase();
     const period = Number(body.period || 5);
     const region = body.region || 'all';
-    const result = await discoverMrt({ dep, period, region, targetPrice });
+    const departureDate = body.departureDate;
+
+    const result = await discoverMrt({ dep, period, region, targetPrice, departureDate });
 
     const value = {
       enabled: true,
@@ -30,6 +32,7 @@ export default async (req) => {
       dep,
       period,
       region,
+      departureDate,
       targetPrice,
       subscription: body.subscription,
       prices: Object.fromEntries(result.rows.map(x => [x.key, x.totalPrice])),
@@ -38,7 +41,15 @@ export default async (req) => {
     };
 
     await store.setJSON('watch', value);
-    return Response.json({ ok:true, enabled:true, count:result.rows.length, cached:result.cached });
+
+    return Response.json({
+      ok:true,
+      enabled:true,
+      count:result.rows.length,
+      windowStart:result.windowStart,
+      windowEnd:result.windowEnd,
+      cached:result.cached
+    });
   } catch (e) {
     return Response.json({ error: String(e?.message || e) }, { status: 400 });
   }
