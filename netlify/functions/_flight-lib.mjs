@@ -1,11 +1,27 @@
 export function dateRange(start, end, maxDays = 5) {
-  const a = new Date(start + 'T00:00:00+09:00');
-  const b = new Date(end + 'T00:00:00+09:00');
-  if (!Number.isFinite(a.getTime()) || !Number.isFinite(b.getTime()) || b < a) throw new Error('날짜 범위를 확인하세요.');
-  const out = [];
-  for (let d = new Date(a); d <= b && out.length < maxDays; d.setDate(d.getDate()+1)) out.push(d.toISOString().slice(0,10));
-  if (new Date(a.getTime() + (maxDays-1)*86400000) < b) throw new Error('MVP에서는 최대 5일까지 감시할 수 있습니다.');
-  return out;
+  const parse = value => {
+    const m = String(value || '').match(/^(\d{4})-(\d{2})-(\d{2})$/);
+    if (!m) throw new Error('날짜 범위를 확인하세요.');
+    const y = Number(m[1]), mo = Number(m[2]), d = Number(m[3]);
+    const ts = Date.UTC(y, mo - 1, d);
+    const check = new Date(ts);
+    if (check.getUTCFullYear() !== y || check.getUTCMonth() !== mo - 1 || check.getUTCDate() !== d) {
+      throw new Error('날짜 범위를 확인하세요.');
+    }
+    return ts;
+  };
+
+  const a = parse(start);
+  const b = parse(end);
+  if (b < a) throw new Error('날짜 범위를 확인하세요.');
+
+  const dayMs = 86400000;
+  const count = Math.floor((b - a) / dayMs) + 1;
+  if (count > maxDays) throw new Error('MVP에서는 최대 5일까지 감시할 수 있습니다.');
+
+  return Array.from({ length: count }, (_, i) =>
+    new Date(a + i * dayMs).toISOString().slice(0, 10)
+  );
 }
 
 export async function searchSerp(date, adults = 1) {
