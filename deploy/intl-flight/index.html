@@ -21,6 +21,7 @@
 
 <section class="card">
   <h2>조건에 맞는 여행지</h2>
+  <div class="field"><label>정렬</label><select id="sortMode"><option value="price">최저가 순</option><option value="leave">평일 사용일수 적은 순</option></select></div>
   <div id="discoverResults" class="muted">아직 조회하지 않았습니다.</div>
 </section>
 
@@ -40,7 +41,7 @@
 </section>
 
 <section class="card">
-  <div class="note">마이리얼트립 API 가격은 실시간 확정 판매가가 아니라 내부 검색 과정에서 수집·저장된 참고 최저가입니다. 여행지를 누르면 같은 노선·날짜의 마이리얼트립 실시간 항공권 검색결과로 이동합니다. 자동감시는 1시간 간격이며 같은 조건의 수동조회는 30분간 캐시합니다.</div>
+  <div class="note">마이리얼트립 API 가격은 실시간 확정 판매가가 아니라 내부 검색 과정에서 수집·저장된 참고 최저가입니다. 여행지를 누르면 같은 노선·날짜의 마이리얼트립 실시간 항공권 검색결과로 이동합니다. 결과의 평일 사용일수는 토·일만 제외한 단순 계산으로 공휴일은 아직 반영하지 않습니다. 자동감시는 1시간 간격이며 같은 조건의 수동조회는 30분간 캐시합니다.</div>
 </section>
 </main>
 <script>
@@ -62,13 +63,22 @@ function loadForms(){
   $('rDep').value=r.dep||'ICN';$('rArr').value=r.arr||'NRT';$('rStart').value=r.start||iso(base);$('rEnd').value=r.end||iso(end);$('rPeriod').value=String(r.period||5);
   updateSummary();
 }
+function weekdayCount(start,end){
+  const a=new Date(start+'T00:00:00Z'),b=new Date(end+'T00:00:00Z');let n=0;
+  for(let d=new Date(a);d<=b;d.setUTCDate(d.getUTCDate()+1)){const day=d.getUTCDay();if(day!==0&&day!==6)n++}
+  return n;
+}
+let lastDiscoverRows=[];
 function bookingUrl(f){
   const dep=String(f.fromCity||'ICN').toUpperCase(),arr=String(f.toCity||'').toUpperCase();
   const trip=encodeURIComponent('A.'+dep+'.A.'+arr+'.'+f.departureDate+'/A.'+arr+'.A.'+dep+'.'+f.returnDate);
   return 'https://air-web.myrealtrip.com/results?adult=1&tripType=ROUND_TRIP&trip='+trip;
 }
 function renderDiscover(rows){
-  $('discoverResults').innerHTML=rows.length?rows.map(f=>`<a class="fare" href="${bookingUrl(f)}" target="_blank" rel="noopener"><div class="top"><span>${esc(f.cityName||f.airportName||f.toCity)} <span class="tag">${esc(f.countryName||f.countryCode||'')}</span></span><span class="price">${money(f.totalPrice)}</span></div><div class="small">${esc(f.toCity)} · ${esc(f.departureDate)} → ${esc(f.returnDate)} · ${esc(f.period)}일 일정 · 최적 출발일</div><span class="book">실시간 항공권 확인 →</span></a>`).join(''):'현재 조건에 맞는 여행지가 없습니다.';
+  lastDiscoverRows=[...(rows||[])];
+  const mode=$('sortMode')?.value||'price';
+  const sorted=[...lastDiscoverRows].sort((a,b)=>mode==='leave'?(weekdayCount(a.departureDate,a.returnDate)-weekdayCount(b.departureDate,b.returnDate)||a.totalPrice-b.totalPrice):(a.totalPrice-b.totalPrice));
+  $('discoverResults').innerHTML=sorted.length?sorted.map(f=>`<a class="fare" href="${bookingUrl(f)}" target="_blank" rel="noopener"><div class="top"><span>${esc(f.cityName||f.airportName||f.toCity)} <span class="tag">${esc(f.countryName||f.countryCode||'')}</span></span><span class="price">${money(f.totalPrice)}</span></div><div class="small">${esc(f.toCity)} · ${esc(f.departureDate)} → ${esc(f.returnDate)} · ${esc(f.period)}일 일정 · 평일 사용 ${weekdayCount(f.departureDate,f.returnDate)}일</div><span class="book">실시간 항공권 확인 →</span></a>`).join(''):'현재 조건에 맞는 여행지가 없습니다.';
 }
 function renderRoute(rows){
   $('routeResults').innerHTML=rows.length?rows.map(f=>`<a class="fare" href="${bookingUrl(f)}" target="_blank" rel="noopener"><div class="top"><span>${esc(f.departureDate)} → ${esc(f.returnDate)}</span><span class="price">${money(f.totalPrice)}</span></div><div class="small">${esc(f.airline||'항공사 미표시')} · ${esc(f.period)}일 일정</div><span class="book">실시간 항공권 확인 →</span></a>`).join(''):'조회된 최저가 데이터가 없습니다.';
@@ -97,6 +107,7 @@ async function subscribe(){
   let sub=await reg.pushManager.getSubscription();if(!sub)sub=await reg.pushManager.subscribe({userVisibleOnly:true,applicationServerKey:b64(cfg.vapidPublicKey)});
   return sub.toJSON();
 }
+$('sortMode')?.addEventListener('change',()=>renderDiscover(lastDiscoverRows));
 ['dDep','dDepartureDate','dPeriod','dRegion','dTarget','rDep','rArr','rStart','rEnd','rPeriod'].forEach(id=>$(id).addEventListener('change',()=>{saveForms();if(id.startsWith('d'))updateSummary()}));
 $('discover').onclick=()=>doDiscover().catch(e=>$('state').textContent=e.message);
 $('routeSearch').onclick=()=>doRoute().catch(e=>$('routeState').textContent=e.message);
