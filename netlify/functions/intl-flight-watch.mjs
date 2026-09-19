@@ -3,6 +3,16 @@ import { discoverMrt } from './_intl-flight-lib.mjs';
 
 const store = getStore({ name: 'intl-flight-alert', consistency: 'strong' });
 
+function bestMap(rows) {
+  return Object.fromEntries(rows.map(x => [x.toCity, {
+    price: x.totalPrice,
+    key: x.key,
+    departureDate: x.departureDate,
+    returnDate: x.returnDate,
+    cityName: x.cityName || x.toCity
+  }]));
+}
+
 export default async (req) => {
   try {
     if (req.method === 'GET') {
@@ -35,7 +45,7 @@ export default async (req) => {
       departureDate,
       targetPrice,
       subscription: body.subscription,
-      prices: Object.fromEntries(result.rows.map(x => [x.key, x.totalPrice])),
+      bestByDestination: bestMap(result.rows),
       lastFares: result.rows,
       updatedAt: new Date().toISOString()
     };
