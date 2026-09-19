@@ -85,10 +85,28 @@ const EAST_ASIA=['JP','CN','HK','MO','TW','MN'];
 const SOUTH_ASIA=['IN','PK','BD','LK','NP','BT','MV','AF'];
 const CENTRAL_ASIA=['KZ','KG','TJ','TM','UZ'];
 const MIDDLE_EAST=['AE','SA','QA','BH','KW','OM','YE','IL','JO','LB','IQ','IR','TR'];
-const EUROPE=['AL','AD','AT','BY','BE','BA','BG','HR','CY','CZ','DK','EE','FI','FR','DE','GR','HU','IS','IE','IT','LV','LI','LT','LU','MT','MD','MC','ME','NL','MK','NO','PL','PT','RO','SM','RS','SK','SI','ES','SE','CH','UA','GB','VA'];
+
+const WESTERN_EUROPE=['FR','DE','BE','NL','LU','CH','AT','IE','GB'];
+const SOUTHERN_EUROPE=['IT','ES','PT','GR','HR','SI','MT','CY','MC','SM','VA','AL','ME','MK','BA'];
+const NORTHERN_EUROPE=['DK','NO','SE','FI','IS','EE','LV','LT'];
+const EASTERN_EUROPE=['PL','CZ','SK','HU','RO','BG','RS','MD','UA','BY'];
+const EUROPE=[...new Set([...WESTERN_EUROPE,...SOUTHERN_EUROPE,...NORTHERN_EUROPE,...EASTERN_EUROPE])];
+
 const NORTH_AMERICA=['US','CA','MX','GL','BM'];
-const OCEANIA=['AU','NZ','FJ','PG','NC','PF','WS','TO','VU','SB','GU','MP','FM','PW','MH','KI','NR','TV'];
-const AFRICA=['DZ','AO','BJ','BW','BF','BI','CV','CM','CF','TD','KM','CG','CD','CI','DJ','EG','GQ','ER','SZ','ET','GA','GM','GH','GN','GW','KE','LS','LR','LY','MG','MW','ML','MR','MU','MA','MZ','NA','NE','NG','RW','ST','SN','SC','SL','SO','ZA','SS','SD','TZ','TG','TN','UG','ZM','ZW'];
+const AUSTRALIA=['AU'];
+const NEW_ZEALAND=['NZ'];
+const SOUTH_PACIFIC=['FJ','PG','NC','PF','WS','TO','VU','SB','GU','MP','FM','PW','MH','KI','NR','TV'];
+const OCEANIA=[...AUSTRALIA,...NEW_ZEALAND,...SOUTH_PACIFIC];
+
+const GULF=['AE','SA','QA','BH','KW','OM'];
+const LEVANT_TURKEY=['IL','JO','LB','TR'];
+const OTHER_MIDDLE_EAST=['YE','IQ','IR'];
+
+const NORTH_AFRICA=['EG','MA','TN','DZ','LY','SD'];
+const EAST_AFRICA=['ET','KE','TZ','UG','RW','DJ','ER','SO','SC','MU','MG','KM'];
+const SOUTHERN_AFRICA=['ZA','NA','BW','ZM','ZW','MZ','MW','LS','SZ','AO'];
+const WEST_CENTRAL_AFRICA=['NG','GH','SN','CI','CM','GA','CG','CD','BJ','TG','GM','GN','GW','LR','SL','ML','NE','BF','CF','TD','GQ','ST','CV','BI'];
+const AFRICA=[...new Set([...NORTH_AFRICA,...EAST_AFRICA,...SOUTHERN_AFRICA,...WEST_CENTRAL_AFRICA])];
 
 function matchesToken(cc, token){
   if(token==='all') return true;
@@ -97,13 +115,35 @@ function matchesToken(cc, token){
   if(token==='seasia') return SEA.includes(cc);
   if(token==='greater_china') return ['CN','HK','MO','TW'].includes(cc);
   if(token==='other_asia') return [...SOUTH_ASIA,...CENTRAL_ASIA,'MN'].includes(cc);
+
   if(token==='europe') return EUROPE.includes(cc);
+  if(token==='western_europe') return WESTERN_EUROPE.includes(cc);
+  if(token==='southern_europe') return SOUTHERN_EUROPE.includes(cc);
+  if(token==='northern_europe') return NORTHERN_EUROPE.includes(cc);
+  if(token==='eastern_europe') return EASTERN_EUROPE.includes(cc);
+
   if(token==='northamerica') return NORTH_AMERICA.includes(cc);
   if(token==='usa') return cc==='US';
   if(token==='canada') return cc==='CA';
+  if(token==='mexico') return cc==='MX';
+
   if(token==='oceania') return OCEANIA.includes(cc);
+  if(token==='australia') return AUSTRALIA.includes(cc);
+  if(token==='newzealand') return NEW_ZEALAND.includes(cc);
+  if(token==='south_pacific') return SOUTH_PACIFIC.includes(cc);
+
   if(token==='middleeast') return MIDDLE_EAST.includes(cc);
+  if(token==='gulf') return GULF.includes(cc);
+  if(token==='uae') return cc==='AE';
+  if(token==='levant_turkey') return LEVANT_TURKEY.includes(cc);
+  if(token==='other_middleeast') return OTHER_MIDDLE_EAST.includes(cc);
+
   if(token==='africa') return AFRICA.includes(cc);
+  if(token==='north_africa') return NORTH_AFRICA.includes(cc);
+  if(token==='east_africa') return EAST_AFRICA.includes(cc);
+  if(token==='southern_africa') return SOUTHERN_AFRICA.includes(cc);
+  if(token==='west_central_africa') return WEST_CENTRAL_AFRICA.includes(cc);
+
   return false;
 }
 
