@@ -15,7 +15,11 @@ export default async (req)=>{
       dep,period,region,targetPrice,departureDate,
       windowStart:result.windowStart,
       windowEnd:result.windowEnd,
-      candidateCount:result.candidateCount,
+      bulkCount:result.bulkCount,
+      resolvedAirportCount:result.resolvedAirportCount,
+      unresolvedCount:result.unresolvedCount,
+      successCount:result.successCount,
+      failedCount:result.failedCount,
       count:result.rows.length,
       cached:result.cached,
       destinations:result.rows
