@@ -77,6 +77,12 @@ async function airportMap() {
 }
 
 const SEA = ['TH','VN','PH','MY','SG','ID','KH','LA','MM','BN','TL'];
+const EUROPE = [
+  'AL','AD','AT','BY','BE','BA','BG','HR','CY','CZ','DK','EE','FI','FR','DE','GR',
+  'HU','IS','IE','IT','LV','LI','LT','LU','MT','MD','MC','ME','NL','MK','NO','PL',
+  'PT','RO','SM','RS','SK','SI','ES','SE','CH','UA','GB','VA'
+];
+const USA = ['US'];
 
 function inRegion(meta, region){
   if(region==='all') return true;
@@ -84,6 +90,9 @@ function inRegion(meta, region){
   if(region==='japan') return cc==='JP';
   if(region==='seasia') return SEA.includes(cc);
   if(region==='japan_seasia') return cc==='JP' || SEA.includes(cc);
+  if(region==='europe') return EUROPE.includes(cc);
+  if(region==='usa') return USA.includes(cc);
+  if(region==='europe_usa') return EUROPE.includes(cc) || USA.includes(cc);
   return true;
 }
 
@@ -106,7 +115,7 @@ export async function discoverMrt({ dep, period, region='all', targetPrice=99999
   period = validatePeriod(period);
   departureDate = validateDate(departureDate);
   targetPrice = Math.max(1,Number(targetPrice||0));
-  region = ['all','japan','seasia','japan_seasia'].includes(region) ? region : 'all';
+  region = ['all','japan','seasia','japan_seasia','europe','usa','europe_usa'].includes(region) ? region : 'all';
 
   const windowStart = shiftDate(departureDate,-2);
   const windowEnd = shiftDate(departureDate,2);
