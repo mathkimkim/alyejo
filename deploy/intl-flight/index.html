@@ -165,7 +165,7 @@ async function doDiscover(){
   if(!r.ok){$('state').innerHTML='<span class="warn">'+esc(j.error||'조회 실패')+'</span>';return}
   lastRows=j.destinations||[];lastWindow=[];for(let i=0;i<5;i++)lastWindow.push(dateAdd(j.windowStart,i));
   activeDate='all';renderTabs();renderDiscover();
-  $('state').innerHTML=`<span class="ok">조회 완료</span> · ${j.windowStart}~${j.windowEnd} · ${j.count}건`;
+  $('state').innerHTML=`<span class="ok">조회 완료</span> · ${j.windowStart}~${j.windowEnd} · 결과 ${j.count}건<br><span class="muted">공항 ${j.resolvedAirportCount||0}곳 조회 · 성공 ${j.successCount||0} · 실패 ${j.failedCount||0}${j.unresolvedCount?' · 코드미해결 '+j.unresolvedCount:''}</span>`;
 }
 async function doRoute(){saveForms();const p=routeParams();$('routeState').textContent='조회 중입니다…';const qs=new URLSearchParams({dep:p.dep,arr:p.arr,start:p.start,end:p.end,period:String(p.period)});const r=await fetch('/api/intl-flight-search?'+qs),j=await r.json();if(!r.ok){$('routeState').innerHTML='<span class="warn">'+esc(j.error||'조회 실패')+'</span>';return}$('routeState').innerHTML=`<span class="ok">조회 완료</span> · ${j.count}건`;renderRoute(j.fares)}
 function b64(s){const p='='.repeat((4-s.length%4)%4),b=(s+p).replace(/-/g,'+').replace(/_/g,'/'),raw=atob(b);return Uint8Array.from([...raw].map(c=>c.charCodeAt(0)))}
