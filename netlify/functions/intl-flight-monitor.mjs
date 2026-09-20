@@ -36,6 +36,8 @@ export default async()=>{
   if(!pub||!priv) return;
 
   webpush.setVapidDetails(subject,pub,priv);
+  let history=await store.get('recent-alerts',{type:'json'});
+  history=Array.isArray(history)?history:[];
 
   for(const w of enabled){
     try{
@@ -62,6 +64,8 @@ export default async()=>{
           : '';
         const more=alerts.length>1?` 외 ${alerts.length-1}곳`:'';
         const condition=`${w.departureDate} ±2일 · ${regionLabel(w.region)}`;
+        const detectedAt=new Date().toISOString();
+        const alertType=best.old?'price_drop':'new_deal';
 
         try{
           await webpush.sendNotification(w.subscription,JSON.stringify({
@@ -69,6 +73,29 @@ export default async()=>{
             body:`[${condition}] ${best.cityName||best.toCity} · ${best.departureDate}~${best.returnDate} · ${best.totalPrice.toLocaleString('ko-KR')}원${priceDrop}${more}`,
             url:'/intl-flight/'
           }));
+
+          const entries=alerts.map(a=>({
+            id:[detectedAt,w.id,a.toCity,a.key].join('|'),
+            detectedAt,
+            watchId:w.id,
+            type:a.old?'price_drop':'new_deal',
+            dep:w.dep,
+            region:w.region,
+            regionLabel:regionLabel(w.region),
+            targetPrice:w.targetPrice,
+            watchDepartureDate:w.departureDate,
+            period:w.period,
+            cityName:a.cityName||a.toCity,
+            airportName:a.airportName||'',
+            countryName:a.countryName||'',
+            toCity:a.toCity,
+            departureDate:a.departureDate,
+            returnDate:a.returnDate,
+            totalPrice:a.totalPrice,
+            previousPrice:a.old?.price||null
+          }));
+
+          history=[...entries,...history].slice(0,50);
         }catch(pushErr){
           const code=pushErr?.statusCode;
           if(code===404||code===410) w.enabled=false;
@@ -87,6 +114,7 @@ export default async()=>{
   }
 
   await store.setJSON('watches',watches);
+  await store.setJSON('recent-alerts',history);
 };
 
 export const config={schedule:'0 * * * *'};
