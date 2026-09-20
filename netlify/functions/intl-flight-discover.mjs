@@ -8,11 +8,13 @@ export default async (req)=>{
     const region=u.searchParams.get('region')||'all';
     const targetPrice=Number(u.searchParams.get('targetPrice')||300000);
     const departureDate=u.searchParams.get('departureDate');
+    const countries=(u.searchParams.get('countries')||'').split(',').filter(Boolean);
+    const airports=(u.searchParams.get('airports')||'').split(',').filter(Boolean);
 
-    const result=await discoverMrt({dep,period,region,targetPrice,departureDate});
+    const result=await discoverMrt({dep,period,region,targetPrice,departureDate,countries,airports});
 
     return Response.json({
-      dep,period,region,targetPrice,departureDate,
+      dep,period,region,targetPrice,departureDate,countries,airports,
       windowStart:result.windowStart,
       windowEnd:result.windowEnd,
       bulkCount:result.bulkCount,
