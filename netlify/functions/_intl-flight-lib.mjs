@@ -351,3 +351,29 @@ export async function trackMrt({dep,period,region='all',departureDate,limit=50,c
     failedCount:checked.filter(x=>x.status==='rejected').length
   };
 }
+
+export async function trackableAirportCatalog({dep='ICN',period=5}={}) {
+  dep=cleanAirport(dep);
+  period=validatePeriod(period);
+  const [bulk,index]=await Promise.all([bulkLowest(dep,period),airportIndex()]);
+  const expanded=resolveBulkDestinations(bulk.rows,index,'all',Number.MAX_SAFE_INTEGER);
+  const airports=expanded.resolved.map(x=>({
+    airportCode:x.airportCode,
+    airportName:x.airportName,
+    cityCode:x.cityCode,
+    cityName:x.cityName,
+    countryCode:x.countryCode,
+    countryName:x.countryName,
+    continent:continentKey(x.countryCode),
+    referenceLowest:x.referenceLowest
+  })).sort((a,b)=>(a.countryName+a.cityName+a.airportCode).localeCompare(b.countryName+b.cityName+b.airportCode,'ko'));
+
+  return {
+    airports,
+    count:airports.length,
+    dep,
+    period,
+    cached:bulk.cached,
+    unresolvedCount:expanded.unresolvedCount
+  };
+}
