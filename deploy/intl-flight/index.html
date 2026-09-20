@@ -47,7 +47,7 @@
   </div>
   <div class="selected-title">선택한 목적지</div>
   <div id="selectedDestinations" class="selected"></div>
-  <div class="hint">아무것도 선택하지 않으면 아시아·유럽·북미·오세아니아·중동 전체를 대상으로 합니다.</div>
+  <div class="hint">현재 출발공항·여행기간에서 가격 추적 데이터가 잡히는 국가와 공항만 표시합니다. 아무것도 선택하지 않으면 지원 지역 전체를 대상으로 합니다.</div>
 </section>
 
 <section class="card">
@@ -202,10 +202,16 @@ function renderSelected(){
 }
 function renderDestinationPicker(){renderContinents();renderCountries();renderAirports();renderSelected()}
 async function loadAirportCatalog(){
-  const r=await fetch('/api/intl-airports'),j=await r.json();
+  const dep=$('dDep').value.trim().toUpperCase()||'ICN';
+  const period=+$('dPeriod').value||5;
+  $('countryPanel').hidden=false;$('countryPanel').innerHTML='<div class="muted">현재 가격 추적 가능한 공항을 불러오는 중입니다…</div>';
+  const r=await fetch('/api/intl-airports?dep='+encodeURIComponent(dep)+'&period='+encodeURIComponent(period)),j=await r.json();
   if(!r.ok)throw Error(j.error||'공항 목록 조회 실패');
   airportCatalog=(j.airports||[]).filter(a=>continents.some(x=>x[0]===a.continent) && a.countryCode!=='KR');
+  selectedCountries=selectedCountries.filter(cc=>airportCatalog.some(a=>a.countryCode===cc));
+  selectedAirports=selectedAirports.filter(code=>airportCatalog.some(a=>a.airportCode===code));
   renderDestinationPicker();
+  $('state').innerHTML='<span class="ok">목적지 목록 갱신</span> · 현재 '+airportCatalog.length+'개 공항 가격 추적 가능';
 }
 function loadForms(){
   let d={},r={};try{d=JSON.parse(localStorage.getItem(KEY)||'{}')}catch{}try{r=JSON.parse(localStorage.getItem(ROUTE_KEY)||'{}')}catch{}
@@ -260,7 +266,7 @@ function renderAlertHistory(items){const list=Array.isArray(items)?items:[];if(!
 async function loadAlertHistory(){const r=await fetch('/api/intl-flight-alert-history'),j=await r.json();if(!r.ok)throw Error(j.error||'최근 알림 조회 실패');renderAlertHistory(j.alerts||[])}
 
 $('airportSearch').addEventListener('input',renderAirportButtons);
-['dDep','dDepartureDate','dPeriod','dTarget','rDep','rArr','rStart','rEnd','rPeriod'].forEach(id=>$(id).addEventListener('change',()=>{saveForms();if(id.startsWith('d'))updateSummary()}));
+['dDep','dDepartureDate','dPeriod','dTarget','rDep','rArr','rStart','rEnd','rPeriod'].forEach(id=>$(id).addEventListener('change',()=>{saveForms();if(id.startsWith('d'))updateSummary();if(id==='dDep'||id==='dPeriod'){loadAirportCatalog().catch(e=>{$('state').innerHTML='<span class="warn">'+esc(e.message)+'</span>'})}}));
 $('discover').onclick=()=>doDiscover().catch(e=>$('state').textContent=e.message);
 $('routeSearch').onclick=()=>doRoute().catch(e=>$('routeState').textContent=e.message);
 $('watch').onclick=async()=>{try{saveForms();updateSummary();const p=discoverParams();$('state').textContent='푸시 알림을 등록 중입니다…';const subscription=await subscribe();const r=await fetch('/api/intl-flight-watch',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({...p,subscription})}),j=await r.json();if(!r.ok)throw Error(j.error||'등록 실패');$('state').innerHTML=`<span class="ok">🔔 알림 등록 완료</span><br>${esc(p.departureDate)} ±2일 · ${esc(p.destinationLabel)} · 목표 ${money(p.targetPrice)} · 목표가 도달 + 가격 하락 감시`;await loadWatches();await doDiscover()}catch(e){$('state').innerHTML='<span class="warn">'+esc(e.message)+'</span>'}};
