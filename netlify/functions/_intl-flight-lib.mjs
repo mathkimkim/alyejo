@@ -107,7 +107,8 @@ const NORTHERN_EUROPE=['DK','NO','SE','FI','IS','EE','LV','LT'];
 const EASTERN_EUROPE=['PL','CZ','SK','HU','RO','BG','RS','MD','UA','BY'];
 const EUROPE=[...new Set([...WESTERN_EUROPE,...SOUTHERN_EUROPE,...NORTHERN_EUROPE,...EASTERN_EUROPE])];
 
-const NORTH_AMERICA=['US','CA','MX','GL','BM'];
+const NORTH_AMERICA=['US','CA','MX','GL','BM','BZ','CR','SV','GT','HN','NI','PA','BS','BB','CU','DO','HT','JM','TT','AG','DM','GD','KN','LC','VC','PR','VI','KY','AW','CW','SX','TC','VG'];
+const SOUTH_AMERICA=['AR','BO','BR','CL','CO','EC','FK','GF','GY','PY','PE','SR','UY','VE'];
 const AUSTRALIA=['AU'];
 const NEW_ZEALAND=['NZ'];
 const SOUTH_PACIFIC=['FJ','PG','NC','PF','WS','TO','VU','SB','GU','MP','FM','PW','MH','KI','NR','TV'];
@@ -123,6 +124,47 @@ const SOUTHERN_AFRICA=['ZA','NA','BW','ZM','ZW','MZ','MW','LS','SZ','AO'];
 const WEST_CENTRAL_AFRICA=['NG','GH','SN','CI','CM','GA','CG','CD','BJ','TG','GM','GN','GW','LR','SL','ML','NE','BF','CF','TD','GQ','ST','CV','BI'];
 const AFRICA=[...new Set([...NORTH_AFRICA,...EAST_AFRICA,...SOUTHERN_AFRICA,...WEST_CENTRAL_AFRICA])];
 
+function continentKey(cc){
+  if(MIDDLE_EAST.includes(cc)) return 'middleeast';
+  if(EUROPE.includes(cc) || ['RU'].includes(cc)) return 'europe';
+  if(NORTH_AMERICA.includes(cc)) return 'northamerica';
+  if(SOUTH_AMERICA.includes(cc)) return 'southamerica';
+  if(AFRICA.includes(cc)) return 'africa';
+  if(OCEANIA.includes(cc)) return 'oceania';
+  if([...EAST_ASIA,...SEA,...SOUTH_ASIA,...CENTRAL_ASIA,'KR'].includes(cc)) return 'asia';
+  return 'other';
+}
+
+export async function airportCatalog(){
+  const index=await airportIndex();
+  const airports=Object.values(index.byAirport).map(x=>({
+    airportCode:x.airportCode,
+    airportName:x.airportName,
+    cityCode:x.cityCode,
+    cityName:x.cityName,
+    countryCode:x.countryCode,
+    countryName:x.countryName,
+    continent:continentKey(x.countryCode)
+  })).sort((a,b)=>(a.countryName+a.cityName+a.airportCode).localeCompare(b.countryName+b.cityName+b.airportCode,'ko'));
+  return airports;
+}
+
+function normalizeCodes(v){
+  if(Array.isArray(v)) return [...new Set(v.map(x=>String(x||'').trim().toUpperCase()).filter(Boolean))];
+  return [...new Set(String(v||'').split(',').map(x=>x.trim().toUpperCase()).filter(Boolean))];
+}
+
+function selectedAirportMetas(index,countries,airports){
+  const countrySet=new Set(normalizeCodes(countries));
+  const airportSet=new Set(normalizeCodes(airports));
+  const out=[];
+  for(const meta of Object.values(index.byAirport)){
+    if(airportSet.has(meta.airportCode) || countrySet.has(meta.countryCode)) out.push(meta);
+  }
+  const map=new Map(out.map(x=>[x.airportCode,x]));
+  return [...map.values()];
+}
+
 function matchesToken(cc, token){
   if(token==='all') return true;
   if(token==='asia') return [...EAST_ASIA,...SEA,...SOUTH_ASIA,...CENTRAL_ASIA,...MIDDLE_EAST].includes(cc);
@@ -136,6 +178,7 @@ function matchesToken(cc, token){
   if(token==='northern_europe') return NORTHERN_EUROPE.includes(cc);
   if(token==='eastern_europe') return EASTERN_EUROPE.includes(cc);
   if(token==='northamerica') return NORTH_AMERICA.includes(cc);
+  if(token==='southamerica') return SOUTH_AMERICA.includes(cc);
   if(token==='usa') return cc==='US';
   if(token==='canada') return cc==='CA';
   if(token==='mexico') return cc==='MX';
@@ -215,16 +258,27 @@ function resolveBulkDestinations(rows,index,region,targetPrice){
   return {resolved:[...dedup.values()],unresolvedCount};
 }
 
-export async function discoverMrt({dep,period,region='all',targetPrice=99999999,departureDate}) {
+export async function discoverMrt({dep,period,region='all',targetPrice=99999999,departureDate,countries=[],airports=[]}) {
   dep=cleanAirport(dep); period=validatePeriod(period); departureDate=validateDate(departureDate);
   targetPrice=Math.max(1,Number(targetPrice||0));
 
   const windowStart=shiftDate(departureDate,-2);
   const windowEnd=shiftDate(departureDate,2);
 
-  const [bulk,index]=await Promise.all([bulkLowest(dep,period),airportIndex()]);
-  const expanded=resolveBulkDestinations(bulk.rows,index,region,targetPrice);
-  const candidates=expanded.resolved;
+  const index=await airportIndex();
+  const explicit=normalizeCodes(countries).length>0 || normalizeCodes(airports).length>0;
+  let candidates=[],cached=false,bulkCount=0,unresolvedCount=0;
+
+  if(explicit){
+    candidates=selectedAirportMetas(index,countries,airports).map(x=>({...x,referenceLowest:0,sourceDestinationCode:x.airportCode}));
+  }else{
+    const bulk=await bulkLowest(dep,period);
+    cached=bulk.cached;
+    bulkCount=bulk.rows.length;
+    const expanded=resolveBulkDestinations(bulk.rows,index,region,targetPrice);
+    candidates=expanded.resolved;
+    unresolvedCount=expanded.unresolvedCount;
+  }
 
   const checked=await Promise.allSettled(candidates.map(async c=>{
     const exact=await searchMrt({dep,arr:c.airportCode,start:windowStart,end:windowEnd,period});
@@ -244,36 +298,28 @@ export async function discoverMrt({dep,period,region='all',targetPrice=99999999,
 
   const successCount=checked.filter(x=>x.status==='fulfilled').length;
   const failedCount=checked.length-successCount;
-
-  const rows=checked
-    .filter(x=>x.status==='fulfilled')
-    .flatMap(x=>x.value||[])
+  const rows=checked.filter(x=>x.status==='fulfilled').flatMap(x=>x.value||[])
     .sort((a,b)=>a.departureDate.localeCompare(b.departureDate)||a.totalPrice-b.totalPrice);
 
-  return {
-    rows,
-    cached:bulk.cached,
-    departureDate,
-    windowStart,
-    windowEnd,
-    bulkCount:bulk.rows.length,
-    resolvedAirportCount:candidates.length,
-    unresolvedCount:expanded.unresolvedCount,
-    successCount,
-    failedCount
-  };
+  return {rows,cached,departureDate,windowStart,windowEnd,bulkCount,resolvedAirportCount:candidates.length,
+    unresolvedCount,successCount,failedCount};
 }
 
-export async function trackMrt({dep,period,region='all',departureDate,limit=50}) {
+export async function trackMrt({dep,period,region='all',departureDate,limit=50,countries=[],airports=[]}) {
   dep=cleanAirport(dep); period=validatePeriod(period); departureDate=validateDate(departureDate);
   const windowStart=shiftDate(departureDate,-2);
   const windowEnd=shiftDate(departureDate,2);
-  const [bulk,index]=await Promise.all([bulkLowest(dep,period),airportIndex()]);
-
-  const expanded=resolveBulkDestinations(bulk.rows,index,region,Number.MAX_SAFE_INTEGER);
-  const candidates=expanded.resolved
-    .sort((a,b)=>a.referenceLowest-b.referenceLowest)
-    .slice(0,Math.max(1,Math.min(50,Number(limit)||50)));
+  const index=await airportIndex();
+  const explicit=normalizeCodes(countries).length>0 || normalizeCodes(airports).length>0;
+  let candidates;
+  if(explicit){
+    candidates=selectedAirportMetas(index,countries,airports).map(x=>({...x,referenceLowest:0,sourceDestinationCode:x.airportCode}));
+  }else{
+    const bulk=await bulkLowest(dep,period);
+    const expanded=resolveBulkDestinations(bulk.rows,index,region,Number.MAX_SAFE_INTEGER);
+    candidates=expanded.resolved.sort((a,b)=>a.referenceLowest-b.referenceLowest)
+      .slice(0,Math.max(1,Math.min(50,Number(limit)||50)));
+  }
 
   const checked=await Promise.allSettled(candidates.map(async c=>{
     const exact=await searchMrt({dep,arr:c.airportCode,start:windowStart,end:windowEnd,period});
