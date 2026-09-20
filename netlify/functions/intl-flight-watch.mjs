@@ -36,6 +36,7 @@ async function loadWatches(){
 function publicWatch(w){
   return {
     id:w.id,enabled:!!w.enabled,mode:w.mode,dep:w.dep,period:w.period,region:w.region,
+    countries:w.countries||[],airports:w.airports||[],destinationLabel:w.destinationLabel||'',
     departureDate:w.departureDate,targetPrice:w.targetPrice,priceDropTracking:w.priceDropTracking!==false,trackedAirportCount:w.trackedAirportCount||0,createdAt:w.createdAt,updatedAt:w.updatedAt
   };
 }
@@ -81,10 +82,14 @@ export default async(req)=>{
     const dep=String(body.dep||'ICN').toUpperCase();
     const period=Number(body.period||5);
     const region=body.region||'all';
+    const countries=Array.isArray(body.countries)?body.countries.map(x=>String(x).toUpperCase()):[];
+    const airports=Array.isArray(body.airports)?body.airports.map(x=>String(x).toUpperCase()):[];
+    const destinationLabel=String(body.destinationLabel||'');
     const departureDate=body.departureDate;
 
     const duplicate=watches.find(w=>
       w.dep===dep && Number(w.period)===period && w.region===region &&
+      JSON.stringify(w.countries||[])===JSON.stringify(countries) && JSON.stringify(w.airports||[])===JSON.stringify(airports) &&
       w.departureDate===departureDate && Number(w.targetPrice)===targetPrice
     );
     if(duplicate){
@@ -96,13 +101,13 @@ export default async(req)=>{
     }
 
     const [result,tracking]=await Promise.all([
-      discoverMrt({dep,period,region,targetPrice,departureDate}),
-      trackMrt({dep,period,region,departureDate,limit:50})
+      discoverMrt({dep,period,region,targetPrice,departureDate,countries,airports}),
+      trackMrt({dep,period,region,departureDate,limit:50,countries,airports})
     ]);
     const mergedRows=[...tracking.rows,...result.rows];
     const now=new Date().toISOString();
     const value={
-      id:newId(),enabled:true,mode:'discover',dep,period,region,departureDate,targetPrice,
+      id:newId(),enabled:true,mode:'discover',dep,period,region,countries,airports,destinationLabel,departureDate,targetPrice,
       subscription:body.subscription,
       bestByDestination:bestMap(mergedRows),
       lastFares:result.rows,
