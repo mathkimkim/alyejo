@@ -1,6 +1,6 @@
 import { getStore } from '@netlify/blobs';
 import webpush from 'web-push';
-import { discoverMrt } from './_intl-flight-lib.mjs';
+import { discoverMrt, trackMrt } from './_intl-flight-lib.mjs';
 
 const store=getStore({name:'intl-flight-alert',consistency:'strong'});
 
@@ -41,19 +41,35 @@ export default async()=>{
 
   for(const w of enabled){
     try{
-      const result=await discoverMrt({
-        dep:w.dep,period:w.period,region:w.region,targetPrice:w.targetPrice,departureDate:w.departureDate
-      });
+      const [result,tracking]=await Promise.all([
+        discoverMrt({
+          dep:w.dep,period:w.period,region:w.region,targetPrice:w.targetPrice,departureDate:w.departureDate
+        }),
+        trackMrt({
+          dep:w.dep,period:w.period,region:w.region,departureDate:w.departureDate,limit:50
+        })
+      ]);
 
+      const mergedRows=[...tracking.rows,...result.rows];
       const previous=w.bestByDestination||{};
-      const current=bestMap(result.rows);
+      const current=bestMap(mergedRows);
       const alerts=[];
 
       for(const [toCity,cur] of Object.entries(current)){
         const old=previous[toCity];
-        if(!old || cur.price<Number(old.price||0) || (cur.key!==old.key && cur.price<=Number(old.price||0))){
-          const row=result.rows.find(x=>x.toCity===toCity && x.key===cur.key);
-          if(row) alerts.push({...row,old});
+        let type=null;
+
+        if(!old){
+          if(cur.price<=Number(w.targetPrice)) type='target_reached';
+        }else if(cur.price<Number(old.price||0)){
+          type=(Number(old.price)>Number(w.targetPrice) && cur.price<=Number(w.targetPrice))
+            ? 'target_reached'
+            : 'price_drop';
+        }
+
+        if(type){
+          const row=mergedRows.find(x=>x.toCity===toCity && x.key===cur.key);
+          if(row) alerts.push({...row,old,alertType:type});
         }
       }
 
@@ -65,11 +81,11 @@ export default async()=>{
         const more=alerts.length>1?` 외 ${alerts.length-1}곳`:'';
         const condition=`${w.departureDate} ±2일 · ${regionLabel(w.region)}`;
         const detectedAt=new Date().toISOString();
-        const alertType=best.old?'price_drop':'new_deal';
+        const alertType=best.alertType;
 
         try{
           await webpush.sendNotification(w.subscription,JSON.stringify({
-            title:best.old?'✈️ 더 싼 해외 특가 발견':'✈️ 새 해외 특가 발견',
+            title:alertType==='target_reached'?'🎯 목표가 도달':'📉 해외 최저가 하락',
             body:`[${condition}] ${best.cityName||best.toCity} · ${best.departureDate}~${best.returnDate} · ${best.totalPrice.toLocaleString('ko-KR')}원${priceDrop}${more}`,
             url:'/intl-flight/'
           }));
@@ -78,7 +94,7 @@ export default async()=>{
             id:[detectedAt,w.id,a.toCity,a.key].join('|'),
             detectedAt,
             watchId:w.id,
-            type:a.old?'price_drop':'new_deal',
+            type:a.alertType,
             dep:w.dep,
             region:w.region,
             regionLabel:regionLabel(w.region),
@@ -105,6 +121,8 @@ export default async()=>{
 
       w.bestByDestination=current;
       w.lastFares=result.rows;
+      w.trackedAirportCount=tracking.trackedAirportCount;
+      w.priceDropTracking=true;
       w.updatedAt=new Date().toISOString();
     }catch(e){
       console.error('intl-flight-monitor',w.id,e);
