@@ -263,3 +263,45 @@ export async function discoverMrt({dep,period,region='all',targetPrice=99999999,
     failedCount
   };
 }
+
+export async function trackMrt({dep,period,region='all',departureDate,limit=50}) {
+  dep=cleanAirport(dep); period=validatePeriod(period); departureDate=validateDate(departureDate);
+  const windowStart=shiftDate(departureDate,-2);
+  const windowEnd=shiftDate(departureDate,2);
+  const [bulk,index]=await Promise.all([bulkLowest(dep,period),airportIndex()]);
+
+  const expanded=resolveBulkDestinations(bulk.rows,index,region,Number.MAX_SAFE_INTEGER);
+  const candidates=expanded.resolved
+    .sort((a,b)=>a.referenceLowest-b.referenceLowest)
+    .slice(0,Math.max(1,Math.min(50,Number(limit)||50)));
+
+  const checked=await Promise.allSettled(candidates.map(async c=>{
+    const exact=await searchMrt({dep,arr:c.airportCode,start:windowStart,end:windowEnd,period});
+    return exact.rows
+      .filter(x=>x.totalPrice>0)
+      .map(x=>({
+        ...x,
+        toCity:c.airportCode,
+        airportName:c.airportName,
+        cityName:c.cityName,
+        countryCode:c.countryCode,
+        countryName:c.countryName,
+        sourceDestinationCode:c.sourceDestinationCode,
+        referenceLowest:c.referenceLowest
+      }));
+  }));
+
+  const rows=checked
+    .filter(x=>x.status==='fulfilled')
+    .flatMap(x=>x.value||[])
+    .sort((a,b)=>a.departureDate.localeCompare(b.departureDate)||a.totalPrice-b.totalPrice);
+
+  return {
+    rows,
+    windowStart,
+    windowEnd,
+    trackedAirportCount:candidates.length,
+    successCount:checked.filter(x=>x.status==='fulfilled').length,
+    failedCount:checked.filter(x=>x.status==='rejected').length
+  };
+}
