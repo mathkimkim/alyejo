@@ -29,10 +29,10 @@ export function dateRange(start, end, maxDays = 5) {
   );
 }
 
-export async function searchSerp(date, adults = 1) {
+export async function searchSerp(date, adults = 1, forceFresh = false) {
   const cacheKey = `CJU-GMP:${date}:${adults}`;
   const cached = await cacheStore.get(cacheKey, { type: 'json' });
-  if (cached?.at && Array.isArray(cached?.rows) && Date.now() - new Date(cached.at).getTime() < CACHE_MS) {
+  if (!forceFresh && cached?.at && Array.isArray(cached?.rows) && Date.now() - new Date(cached.at).getTime() < CACHE_MS) {
     return cached.rows;
   }
 
@@ -88,8 +88,8 @@ export async function searchSerp(date, adults = 1) {
   return result;
 }
 
-export async function searchRange(start,end,adults=1){
+export async function searchRange(start,end,adults=1,forceFresh=false){
   const dates=dateRange(start,end,5);
-  const parts=await Promise.all(dates.map(d=>searchSerp(d,adults)));
+  const parts=await Promise.all(dates.map(d=>searchSerp(d,adults,forceFresh)));
   return parts.flat();
 }
