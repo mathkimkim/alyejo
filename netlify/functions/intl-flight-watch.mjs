@@ -36,7 +36,7 @@ async function loadWatches(){
 function publicWatch(w){
   return {
     id:w.id,enabled:!!w.enabled,mode:w.mode,dep:w.dep,period:w.period,region:w.region,
-    departureDate:w.departureDate,targetPrice:w.targetPrice,createdAt:w.createdAt,updatedAt:w.updatedAt
+    departureDate:w.departureDate,targetPrice:w.targetPrice,priceDropTracking:w.priceDropTracking!==false,trackedAirportCount:w.trackedAirportCount||0,createdAt:w.createdAt,updatedAt:w.updatedAt
   };
 }
 
