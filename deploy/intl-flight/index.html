@@ -189,7 +189,7 @@ function renderWatchList(watches){
     <div class="watchrow">
       <div>
         <div class="watchtitle">${esc(w.departureDate)} ±2일 · ${esc(watchRegionText(w.region))}</div>
-        <div class="watchmeta">${esc(w.dep)} 출발 · ${esc(w.period)}일 일정 · 왕복 ${money(w.targetPrice)} 이하<br>1시간마다 감시</div>
+        <div class="watchmeta">${esc(w.dep)} 출발 · ${esc(w.period)}일 일정 · 왕복 ${money(w.targetPrice)} 목표 · 목표가 도달 + 최저가 하락 알림<br>1시간마다 감시</div>
       </div>
       <span class="watchstate ${w.enabled?'on':'off'}">${w.enabled?'ON':'OFF'}</span>
     </div>
@@ -227,7 +227,7 @@ function renderAlertHistory(items){
         <div class="watchtitle">${esc(a.cityName||a.toCity)} · ${money(a.totalPrice)}</div>
         <div class="watchmeta">${esc(a.departureDate)} → ${esc(a.returnDate)} · ${esc(a.toCity)}<br>${esc(a.watchDepartureDate)} ±2일 · ${esc(a.regionLabel||watchRegionText(a.region))} · 목표 ${money(a.targetPrice)}</div>
       </div>
-      <span class="historytype ${a.type==='price_drop'?'drop':''}">${a.type==='price_drop'?'가격 하락':'신규 특가'}</span>
+      <span class="historytype ${a.type==='price_drop'?'drop':''}">${a.type==='price_drop'?'가격 하락':(a.type==='target_reached'?'목표가 도달':'신규 특가')}</span>
     </div>
     ${a.previousPrice?'<div class="small">이전 '+money(a.previousPrice)+' → 현재 '+money(a.totalPrice)+'</div>':''}
     <div class="historytime">감지 ${fmtHistoryTime(a.detectedAt)}</div>
@@ -241,7 +241,7 @@ async function loadAlertHistory(){
 ['dDep','dDepartureDate','dPeriod','dTarget','rDep','rArr','rStart','rEnd','rPeriod'].forEach(id=>$(id).addEventListener('change',()=>{saveForms();if(id.startsWith('d'))updateSummary()}));
 $('discover').onclick=()=>doDiscover().catch(e=>$('state').textContent=e.message);
 $('routeSearch').onclick=()=>doRoute().catch(e=>$('routeState').textContent=e.message);
-$('watch').onclick=async()=>{try{saveForms();updateSummary();const p=discoverParams();$('state').textContent='푸시 알림을 등록 중입니다…';const subscription=await subscribe();const r=await fetch('/api/intl-flight-watch',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({...p,subscription})}),j=await r.json();if(!r.ok)throw Error(j.error||'등록 실패');$('state').innerHTML=`<span class="ok">🔔 알림 등록 완료</span><br>${esc(p.departureDate)} ±2일 · ${esc(regionText())} · ${money(p.targetPrice)} 이하 · 1시간 감시`;await loadWatches();await doDiscover()}catch(e){$('state').innerHTML='<span class="warn">'+esc(e.message)+'</span>'}};
+$('watch').onclick=async()=>{try{saveForms();updateSummary();const p=discoverParams();$('state').textContent='푸시 알림을 등록 중입니다…';const subscription=await subscribe();const r=await fetch('/api/intl-flight-watch',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({...p,subscription})}),j=await r.json();if(!r.ok)throw Error(j.error||'등록 실패');$('state').innerHTML=`<span class="ok">🔔 알림 등록 완료</span><br>${esc(p.departureDate)} ±2일 · ${esc(regionText())} · 목표 ${money(p.targetPrice)} · 목표가 도달 + 가격 하락 감시`;await loadWatches();await doDiscover()}catch(e){$('state').innerHTML='<span class="warn">'+esc(e.message)+'</span>'}};
 $('stop').onclick=async()=>{const r=await fetch('/api/intl-flight-watch',{method:'DELETE'}),j=await r.json();if(r.ok){renderWatchList(j.watches||[]);$('state').textContent='모든 알림을 껐습니다.'}};
 loadForms();
 loadWatches().catch(e=>{$('watchList').innerHTML='<div class="warn">'+esc(e.message)+'</div>'});
