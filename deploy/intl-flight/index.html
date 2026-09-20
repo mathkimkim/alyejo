@@ -7,7 +7,7 @@
 .stephead{display:flex;align-items:center;gap:9px;margin-bottom:14px}.step{display:inline-flex;width:28px;height:28px;align-items:center;justify-content:center;border-radius:50%;background:#7db7ff;color:#061522;font-weight:900;font-size:13px}
 .grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}.field label,.section-label{display:block;color:#a9bbca;font-size:12px;margin:0 0 7px}.field input,.field select{width:100%;background:#071a2a;border:1px solid #2a4d67;border-radius:11px;padding:12px;color:#fff;font-size:16px;min-height:46px}
 .chips{display:flex;gap:8px;flex-wrap:wrap}.chip{border:1px solid #2b526e;background:#102a40;color:#c7d8e7;border-radius:999px;padding:10px 13px;font-size:13px;font-weight:800;cursor:pointer}.chip.active{background:#7db7ff;border-color:#7db7ff;color:#071827}
-.subpanel{margin-top:12px;padding:13px;background:#081a2a;border:1px solid #22455f;border-radius:14px}.subpanel-title{font-size:13px;font-weight:800;color:#c5d9e8;margin-bottom:9px}.selected-title{font-size:12px;color:#8ca8bb;margin:14px 0 7px}.selected{display:flex;gap:6px;flex-wrap:wrap;min-height:30px}.tagchip{font-size:12px;padding:7px 10px;background:#173b56;border:1px solid #28536f;border-radius:999px;color:#c5e2f5}
+.subpanel{margin-top:12px;padding:13px;background:#081a2a;border:1px solid #22455f;border-radius:14px}.subpanel-title{font-size:13px;font-weight:800;color:#c5d9e8;margin-bottom:9px}.airportpanel{margin-top:10px;padding:13px;background:#071827;border:1px solid #24465f;border-radius:14px}.airport-search{width:100%;background:#0b2032;border:1px solid #2a4d67;border-radius:10px;padding:10px 12px;color:#fff;font-size:14px;margin-bottom:9px}.airport-list{display:flex;gap:7px;flex-wrap:wrap;max-height:260px;overflow:auto}.airport-chip{border:1px solid #2b526e;background:#102a40;color:#d4e2ed;border-radius:10px;padding:9px 10px;font-size:12px;font-weight:750;cursor:pointer;text-align:left}.airport-chip.active{background:#7db7ff;color:#071827;border-color:#7db7ff}.country-all{width:100%;margin-bottom:9px}.hint{font-size:11px;color:#8199ad;margin-top:7px}.selected-title{font-size:12px;color:#8ca8bb;margin:14px 0 7px}.selected{display:flex;gap:6px;flex-wrap:wrap;min-height:30px}.tagchip{font-size:12px;padding:7px 10px;background:#173b56;border:1px solid #28536f;border-radius:999px;color:#c5e2f5}
 .summary{padding:13px;border-radius:13px;background:#081b2b;border:1px solid #294c67}.summary-title{font-size:12px;color:#8ca7bb;margin-bottom:6px}.summary-main{font-size:14px;line-height:1.55;font-weight:750}
 .actions{display:grid;grid-template-columns:1fr 1fr;gap:9px;margin-top:11px}button.action{border:0;border-radius:12px;padding:13px;font-size:15px;font-weight:900;cursor:pointer;background:#7db7ff;color:#061522;min-height:48px}button.action.secondary{background:#1b3951;color:#e6f1fa}button.action.watch-on{background:#1f8f66;color:#fff}.stop{width:100%;margin-top:9px}
 .status{padding:11px 12px;border-radius:11px;background:#081a2a;margin-top:10px;color:#a9bdcd;font-size:13px;line-height:1.5}.ok{color:#6fe0ae}.warn{color:#ffd179}
@@ -32,14 +32,22 @@
 
 <section class="card">
   <div class="stephead"><span class="step">2</span><h2>어디로 갈까요?</h2></div>
-  <span class="section-label">대륙을 선택하세요 · 여러 개 가능</span>
+  <span class="section-label">대륙 선택</span>
   <div class="chips" id="continentButtons"></div>
-  <div id="subpanel" class="subpanel" hidden>
-    <div id="subpanelTitle" class="subpanel-title"></div>
-    <div class="chips" id="subregionButtons"></div>
+  <div id="countryPanel" class="subpanel" hidden>
+    <div id="countryPanelTitle" class="subpanel-title"></div>
+    <div class="chips" id="countryButtons"></div>
   </div>
-  <div class="selected-title">선택한 지역</div>
-  <div id="selectedRegions" class="selected"></div>
+  <div id="airportPanel" class="airportpanel" hidden>
+    <div id="airportPanelTitle" class="subpanel-title"></div>
+    <button id="countryAll" type="button" class="chip country-all"></button>
+    <input id="airportSearch" class="airport-search" placeholder="도시명·공항명·공항코드 검색">
+    <div id="airportButtons" class="airport-list"></div>
+    <div class="hint">공항 표시는 공항코드 · 도시명 · 공항명 순서입니다.</div>
+  </div>
+  <div class="selected-title">선택한 목적지</div>
+  <div id="selectedDestinations" class="selected"></div>
+  <div class="hint">아무것도 선택하지 않으면 아시아·유럽·북미·오세아니아·중동 전체를 대상으로 합니다.</div>
 </section>
 
 <section class="card">
@@ -91,159 +99,175 @@
 
 <script>
 const $=id=>document.getElementById(id);
-const KEY='intl_discover_form_v6',ROUTE_KEY='intl_route_form_v1';
+const KEY='intl_discover_form_v7',ROUTE_KEY='intl_route_form_v1';
 const money=n=>n?Number(n).toLocaleString('ko-KR')+'원':'가격 없음';
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const iso=d=>d.toISOString().slice(0,10);
 const base=new Date();base.setDate(base.getDate()+14);const end=new Date(base);end.setDate(end.getDate()+14);
 
-const continents=[['all','전체'],['asia','아시아'],['europe','유럽'],['northamerica','북미'],['oceania','오세아니아'],['middleeast','중동'],['africa','아프리카']];
-const subregions={
-  asia:[['japan','일본'],['seasia','동남아'],['greater_china','중국·홍콩·대만'],['other_asia','기타 아시아']],
-  europe:[['western_europe','서유럽'],['southern_europe','남유럽'],['northern_europe','북유럽'],['eastern_europe','동유럽']],
-  northamerica:[['usa','미국'],['canada','캐나다'],['mexico','멕시코']],
-  oceania:[['australia','호주'],['newzealand','뉴질랜드'],['south_pacific','남태평양']],
-  middleeast:[['uae','UAE'],['gulf','걸프지역'],['levant_turkey','터키·레반트'],['other_middleeast','기타 중동']],
-  africa:[['north_africa','북아프리카'],['east_africa','동아프리카'],['southern_africa','남아프리카'],['west_central_africa','서·중앙아프리카']]
-};
-const names=Object.fromEntries([...continents,...Object.values(subregions).flat()]);
-let selectedRegions=['all'],focusedContinent=null,lastRows=[],activeDate='all',lastWindow=[];
+const continents=[['asia','아시아'],['europe','유럽'],['northamerica','북미'],['oceania','오세아니아'],['middleeast','중동']];
+const continentNames=Object.fromEntries(continents);
+const supportedRegions=continents.map(x=>x[0]).join(',');
+let airportCatalog=[],selectedCountries=[],selectedAirports=[],focusedContinent='asia',focusedCountry='',lastRows=[],activeDate='all',lastWindow=[];
 
 function dateAdd(date,delta){const [y,m,d]=date.split('-').map(Number);return new Date(Date.UTC(y,m-1,d)+delta*86400000).toISOString().slice(0,10)}
 function dateLabel(v){const [,m,d]=v.split('-');return Number(m)+'/'+Number(d)}
-function discoverParams(){return{dep:$('dDep').value.trim().toUpperCase(),departureDate:$('dDepartureDate').value,period:+$('dPeriod').value,region:selectedRegions.join(','),targetPrice:+$('dTarget').value}}
+function airportsForCountry(cc){return airportCatalog.filter(x=>x.countryCode===cc).sort((a,b)=>(a.cityName+a.airportCode).localeCompare(b.cityName+b.airportCode,'ko'))}
+function countryMeta(cc){const a=airportCatalog.find(x=>x.countryCode===cc);return a?{code:cc,name:a.countryName||cc}:{code:cc,name:cc}}
+function destinationLabel(){
+  const labels=[];
+  selectedCountries.forEach(cc=>labels.push((countryMeta(cc).name||cc)+' 전체'));
+  selectedAirports.forEach(code=>{
+    const a=airportCatalog.find(x=>x.airportCode===code);
+    labels.push(a?code+' · '+(a.cityName||a.airportName):code);
+  });
+  return labels.length?labels.join(' · '):'지원 지역 전체';
+}
+function discoverParams(){
+  return{
+    dep:$('dDep').value.trim().toUpperCase(),
+    departureDate:$('dDepartureDate').value,
+    period:+$('dPeriod').value,
+    region:supportedRegions,
+    countries:[...selectedCountries],
+    airports:[...selectedAirports],
+    destinationLabel:destinationLabel(),
+    targetPrice:+$('dTarget').value
+  }
+}
 function routeParams(){return{dep:$('rDep').value.trim().toUpperCase(),arr:$('rArr').value.trim().toUpperCase(),start:$('rStart').value,end:$('rEnd').value,period:+$('rPeriod').value}}
-function saveForms(){localStorage.setItem(KEY,JSON.stringify({...discoverParams(),regions:selectedRegions}));localStorage.setItem(ROUTE_KEY,JSON.stringify(routeParams()))}
-function regionText(){return selectedRegions.map(x=>names[x]||x).join(' · ')}
+function saveForms(){localStorage.setItem(KEY,JSON.stringify({...discoverParams()}));localStorage.setItem(ROUTE_KEY,JSON.stringify(routeParams()))}
+function updateSummary(){const p=discoverParams();$('conditionSummary').innerHTML=`<div class="summary-title">현재 조건</div><div class="summary-main">${esc(p.departureDate||'-')} ±2일 · ${p.period}일 · ${esc(p.destinationLabel)}<br>왕복 ${money(p.targetPrice)} 목표</div>`}
 
 function renderContinents(){
-  $('continentButtons').innerHTML=continents.map(([k,label])=>`<button type="button" class="chip ${selectedRegions.includes(k)?'active':''}" data-continent="${k}">${label}</button>`).join('');
-  $('continentButtons').querySelectorAll('button').forEach(b=>b.addEventListener('click',()=>selectContinent(b.dataset.continent)));
+  $('continentButtons').innerHTML=continents.map(([k,label])=>`<button type="button" class="chip ${focusedContinent===k?'active':''}" data-continent="${k}">${label}</button>`).join('');
+  $('continentButtons').querySelectorAll('button').forEach(b=>b.onclick=()=>{focusedContinent=b.dataset.continent;focusedCountry='';renderDestinationPicker()});
 }
-function renderSubregions(){
-  const box=$('subpanel');
-  if(!focusedContinent||!subregions[focusedContinent]){box.hidden=true;$('subregionButtons').innerHTML='';return}
-  box.hidden=false;
-  $('subpanelTitle').textContent=(names[focusedContinent]||focusedContinent)+' 세부지역';
-  $('subregionButtons').innerHTML=subregions[focusedContinent].map(([k,label])=>`<button type="button" class="chip ${selectedRegions.includes(k)?'active':''}" data-sub="${k}">${label}</button>`).join('');
-  $('subregionButtons').querySelectorAll('button').forEach(b=>b.addEventListener('click',()=>toggleSubregion(b.dataset.sub)));
+function countryListForContinent(key){
+  const map=new Map();
+  for(const a of airportCatalog){
+    if(a.continent!==key || a.countryCode==='KR' || !a.countryCode) continue;
+    if(!map.has(a.countryCode)) map.set(a.countryCode,a.countryName||a.countryCode);
+  }
+  return [...map.entries()].sort((a,b)=>a[1].localeCompare(b[1],'ko'));
 }
-function selectContinent(token){
-  if(token==='all'){selectedRegions=['all'];focusedContinent=null;refreshRegions();return}
-  focusedContinent=token;
-  selectedRegions=selectedRegions.filter(x=>x!=='all');
-  const children=(subregions[token]||[]).map(x=>x[0]);
-  const childSelected=children.some(x=>selectedRegions.includes(x));
-  if(!childSelected && !selectedRegions.includes(token)) selectedRegions.push(token);
-  refreshRegions();
+function renderCountries(){
+  const list=countryListForContinent(focusedContinent);
+  $('countryPanel').hidden=false;
+  $('countryPanelTitle').textContent=(continentNames[focusedContinent]||focusedContinent)+' · 국가 선택';
+  $('countryButtons').innerHTML=list.length?list.map(([cc,name])=>`<button type="button" class="chip ${focusedCountry===cc?'active':''}" data-country="${cc}">${esc(name)}</button>`).join(''):'<span class="muted">표시할 국가가 없습니다.</span>';
+  $('countryButtons').querySelectorAll('button').forEach(b=>b.onclick=()=>{focusedCountry=b.dataset.country;renderCountries();renderAirports()});
 }
-function toggleSubregion(token){
-  if(!focusedContinent)return;
-  selectedRegions=selectedRegions.filter(x=>x!=='all'&&x!==focusedContinent);
-  if(selectedRegions.includes(token)) selectedRegions=selectedRegions.filter(x=>x!==token); else selectedRegions.push(token);
-  if(!selectedRegions.length)selectedRegions=['all'];
-  refreshRegions();
+function renderAirports(){
+  if(!focusedCountry){$('airportPanel').hidden=true;return}
+  const meta=countryMeta(focusedCountry), list=airportsForCountry(focusedCountry);
+  $('airportPanel').hidden=false;
+  $('airportPanelTitle').textContent=meta.name+' · 공항 선택 ('+list.length+'개)';
+  $('countryAll').textContent=meta.name+' 전체 공항 선택';
+  $('countryAll').classList.toggle('active',selectedCountries.includes(focusedCountry));
+  $('countryAll').onclick=()=>{
+    const on=selectedCountries.includes(focusedCountry);
+    if(on) selectedCountries=selectedCountries.filter(x=>x!==focusedCountry);
+    else{
+      selectedCountries.push(focusedCountry);
+      const codes=new Set(list.map(x=>x.airportCode));
+      selectedAirports=selectedAirports.filter(x=>!codes.has(x));
+    }
+    renderAirports();renderSelected();saveForms();updateSummary();
+  };
+  renderAirportButtons();
 }
-function refreshRegions(){
-  renderContinents();renderSubregions();
-  $('selectedRegions').innerHTML=selectedRegions.map(x=>`<span class="tagchip">${esc(names[x]||x)}</span>`).join('');
-  updateSummary();saveForms();
+function renderAirportButtons(){
+  if(!focusedCountry)return;
+  const q=($('airportSearch').value||'').trim().toLowerCase();
+  const list=airportsForCountry(focusedCountry).filter(a=>!q||[a.airportCode,a.cityName,a.airportName].join(' ').toLowerCase().includes(q));
+  $('airportButtons').innerHTML=list.length?list.map(a=>`<button type="button" class="airport-chip ${selectedAirports.includes(a.airportCode)?'active':''}" data-airport="${a.airportCode}">${esc(a.airportCode)} · ${esc(a.cityName||'-')} · ${esc(a.airportName||'')}</button>`).join(''):'<span class="muted">검색 결과가 없습니다.</span>';
+  $('airportButtons').querySelectorAll('button').forEach(b=>b.onclick=()=>{
+    const code=b.dataset.airport;
+    selectedCountries=selectedCountries.filter(x=>x!==focusedCountry);
+    if(selectedAirports.includes(code)) selectedAirports=selectedAirports.filter(x=>x!==code); else selectedAirports.push(code);
+    renderAirports();renderSelected();saveForms();updateSummary();
+  });
 }
-function updateSummary(){const p=discoverParams();$('conditionSummary').innerHTML=`<div class="summary-title">현재 조건</div><div class="summary-main">${esc(p.departureDate||'-')} ±2일 · ${p.period}일 · ${esc(regionText())}<br>왕복 ${money(p.targetPrice)} 이하</div>`;}
+function renderSelected(){
+  const items=[];
+  selectedCountries.forEach(cc=>items.push({key:'c:'+cc,label:(countryMeta(cc).name||cc)+' 전체'}));
+  selectedAirports.forEach(code=>{const a=airportCatalog.find(x=>x.airportCode===code);items.push({key:'a:'+code,label:a?code+' · '+(a.cityName||a.airportName):code})});
+  $('selectedDestinations').innerHTML=items.length?items.map(x=>`<span class="tagchip" data-remove="${x.key}">${esc(x.label)} ×</span>`).join(''):'<span class="muted">지원 지역 전체</span>';
+  $('selectedDestinations').querySelectorAll('[data-remove]').forEach(el=>el.onclick=()=>{
+    const [type,val]=el.dataset.remove.split(':');
+    if(type==='c')selectedCountries=selectedCountries.filter(x=>x!==val);else selectedAirports=selectedAirports.filter(x=>x!==val);
+    renderSelected();renderAirports();saveForms();updateSummary();
+  });
+}
+function renderDestinationPicker(){renderContinents();renderCountries();renderAirports();renderSelected()}
+async function loadAirportCatalog(){
+  const r=await fetch('/api/intl-airports'),j=await r.json();
+  if(!r.ok)throw Error(j.error||'공항 목록 조회 실패');
+  airportCatalog=(j.airports||[]).filter(a=>continents.some(x=>x[0]===a.continent) && a.countryCode!=='KR');
+  renderDestinationPicker();
+}
 function loadForms(){
   let d={},r={};try{d=JSON.parse(localStorage.getItem(KEY)||'{}')}catch{}try{r=JSON.parse(localStorage.getItem(ROUTE_KEY)||'{}')}catch{}
   $('dDep').value=d.dep||'ICN';$('dDepartureDate').value=d.departureDate||iso(base);$('dPeriod').value=String(d.period||5);$('dTarget').value=String(d.targetPrice||300000);
-  selectedRegions=Array.isArray(d.regions)&&d.regions.length?d.regions:(d.region?String(d.region).split(','):['all']);
+  selectedCountries=Array.isArray(d.countries)?d.countries:[];
+  selectedAirports=Array.isArray(d.airports)?d.airports:[];
   $('rDep').value=r.dep||'ICN';$('rArr').value=r.arr||'NRT';$('rStart').value=r.start||iso(base);$('rEnd').value=r.end||iso(end);$('rPeriod').value=String(r.period||5);
-  refreshRegions();
+  updateSummary();
 }
+
 function bookingUrl(f){const dep=String(f.fromCity||'ICN').toUpperCase(),arr=String(f.toCity||'').toUpperCase();const trip=encodeURIComponent('A.'+dep+'.A.'+arr+'.'+f.departureDate+'/A.'+arr+'.A.'+dep+'.'+f.returnDate);return 'https://air-web.myrealtrip.com/results?adult=1&tripType=ROUND_TRIP&trip='+trip}
-function renderTabs(){
-  const tabs=['all',...lastWindow];
-  $('dateTabs').innerHTML=tabs.map(v=>`<button type="button" data-date="${v}" class="${activeDate===v?'active':''}">${v==='all'?'전체':dateLabel(v)}${v==='all'?'':' · '+lastRows.filter(x=>x.departureDate===v).length}</button>`).join('');
-  $('dateTabs').querySelectorAll('button').forEach(b=>b.addEventListener('click',()=>{activeDate=b.dataset.date;renderTabs();renderDiscover()}));
-}
-function renderDiscover(){
-  const rows=(activeDate==='all'?lastRows:lastRows.filter(x=>x.departureDate===activeDate)).slice().sort((a,b)=>a.totalPrice-b.totalPrice);
-  $('discoverResults').innerHTML=rows.length?rows.map(f=>`<a class="fare" href="${bookingUrl(f)}" target="_blank" rel="noopener"><div class="top"><span>${esc(f.cityName||f.airportName||f.toCity)} <span class="country">${esc(f.countryName||f.countryCode||'')}</span></span><span class="price">${money(f.totalPrice)}</span></div><div class="small">${esc(f.departureDate)} → ${esc(f.returnDate)} · ${esc(f.toCity)} · ${esc(f.period)}일</div><span class="book">실시간 항공권 확인 →</span></a>`).join(''):'<div class="empty">이 날짜에는 조건에 맞는 여행지가 없습니다.</div>';
-}
+function renderTabs(){const tabs=['all',...lastWindow];$('dateTabs').innerHTML=tabs.map(v=>`<button type="button" data-date="${v}" class="${activeDate===v?'active':''}">${v==='all'?'전체':dateLabel(v)}${v==='all'?'':' · '+lastRows.filter(x=>x.departureDate===v).length}</button>`).join('');$('dateTabs').querySelectorAll('button').forEach(b=>b.onclick=()=>{activeDate=b.dataset.date;renderTabs();renderDiscover()})}
+function renderDiscover(){const rows=(activeDate==='all'?lastRows:lastRows.filter(x=>x.departureDate===activeDate)).slice().sort((a,b)=>a.totalPrice-b.totalPrice);$('discoverResults').innerHTML=rows.length?rows.map(f=>`<a class="fare" href="${bookingUrl(f)}" target="_blank" rel="noopener"><div class="top"><span>${esc(f.cityName||f.airportName||f.toCity)} <span class="country">${esc(f.countryName||f.countryCode||'')}</span></span><span class="price">${money(f.totalPrice)}</span></div><div class="small">${esc(f.departureDate)} → ${esc(f.returnDate)} · ${esc(f.toCity)} · ${esc(f.airportName||'')} · ${esc(f.period)}일</div><span class="book">실시간 항공권 확인 →</span></a>`).join(''):'<div class="empty">이 날짜에는 조건에 맞는 여행지가 없습니다.</div>'}
 function renderRoute(rows){$('routeResults').innerHTML=rows.length?rows.map(f=>`<a class="fare" href="${bookingUrl(f)}" target="_blank" rel="noopener"><div class="top"><span>${esc(f.departureDate)} → ${esc(f.returnDate)}</span><span class="price">${money(f.totalPrice)}</span></div><div class="small">${esc(f.airline||'항공사 미표시')} · ${esc(f.period)}일</div><span class="book">실시간 항공권 확인 →</span></a>`).join(''):'조회된 최저가 데이터가 없습니다.'}
+
 async function doDiscover(){
   saveForms();updateSummary();const p=discoverParams();$('state').textContent='최저가를 비교 중입니다…';
-  const qs=new URLSearchParams({dep:p.dep,departureDate:p.departureDate,period:String(p.period),region:p.region,targetPrice:String(p.targetPrice)});
+  const qs=new URLSearchParams({dep:p.dep,departureDate:p.departureDate,period:String(p.period),region:p.region,targetPrice:String(p.targetPrice),countries:p.countries.join(','),airports:p.airports.join(',')});
   const r=await fetch('/api/intl-flight-discover?'+qs),j=await r.json();
   if(!r.ok){$('state').innerHTML='<span class="warn">'+esc(j.error||'조회 실패')+'</span>';return}
   lastRows=j.destinations||[];lastWindow=[];for(let i=0;i<5;i++)lastWindow.push(dateAdd(j.windowStart,i));
   activeDate='all';renderTabs();renderDiscover();
-  $('state').innerHTML=`<span class="ok">조회 완료</span> · ${j.windowStart}~${j.windowEnd} · 결과 ${j.count}건<br><span class="muted">공항 ${j.resolvedAirportCount||0}곳 조회 · 성공 ${j.successCount||0} · 실패 ${j.failedCount||0}${j.unresolvedCount?' · 코드미해결 '+j.unresolvedCount:''}</span>`;
+  $('state').innerHTML=`<span class="ok">조회 완료</span> · ${j.windowStart}~${j.windowEnd} · 결과 ${j.count}건<br><span class="muted">공항 ${j.resolvedAirportCount||0}곳 조회 · 성공 ${j.successCount||0} · 실패 ${j.failedCount||0}</span>`;
 }
 async function doRoute(){saveForms();const p=routeParams();$('routeState').textContent='조회 중입니다…';const qs=new URLSearchParams({dep:p.dep,arr:p.arr,start:p.start,end:p.end,period:String(p.period)});const r=await fetch('/api/intl-flight-search?'+qs),j=await r.json();if(!r.ok){$('routeState').innerHTML='<span class="warn">'+esc(j.error||'조회 실패')+'</span>';return}$('routeState').innerHTML=`<span class="ok">조회 완료</span> · ${j.count}건`;renderRoute(j.fares)}
+
 function b64(s){const p='='.repeat((4-s.length%4)%4),b=(s+p).replace(/-/g,'+').replace(/_/g,'/'),raw=atob(b);return Uint8Array.from([...raw].map(c=>c.charCodeAt(0)))}
 async function subscribe(){if(!('serviceWorker'in navigator)||!('PushManager'in window))throw Error('이 브라우저는 웹 푸시를 지원하지 않습니다.');const perm=await Notification.requestPermission();if(perm!=='granted')throw Error('알림 권한이 필요합니다.');const reg=await navigator.serviceWorker.register('./sw.js');await navigator.serviceWorker.ready;const cfg=await(await fetch('/api/config')).json();if(!cfg.vapidPublicKey)throw Error('VAPID_PUBLIC_KEY가 설정되지 않았습니다.');let sub=await reg.pushManager.getSubscription();if(!sub)sub=await reg.pushManager.subscribe({userVisibleOnly:true,applicationServerKey:b64(cfg.vapidPublicKey)});return sub.toJSON()}
-function watchRegionText(expr){return String(expr||'all').split(',').map(x=>names[x]||x).join(' · ')}
+
+function legacyRegionText(expr){const m={all:'전체',asia:'아시아',europe:'유럽',northamerica:'북미',oceania:'오세아니아',middleeast:'중동',japan:'일본',seasia:'동남아',usa:'미국',canada:'캐나다'};return String(expr||'all').split(',').map(x=>m[x]||x).join(' · ')}
+function watchDestinationText(w){
+  if(w.destinationLabel)return w.destinationLabel;
+  const labels=[];
+  (w.countries||[]).forEach(cc=>labels.push((countryMeta(cc).name||cc)+' 전체'));
+  (w.airports||[]).forEach(code=>{const a=airportCatalog.find(x=>x.airportCode===code);labels.push(a?code+' · '+(a.cityName||a.airportName):code)});
+  return labels.length?labels.join(' · '):legacyRegionText(w.region);
+}
 function renderWatchList(watches){
   const list=Array.isArray(watches)?watches:[];
   $('watchCount').textContent='('+list.length+'/10)';
   if(!list.length){$('watchList').innerHTML='<div class="muted">아직 등록된 알림이 없습니다.</div>';return}
-  $('watchList').innerHTML=list.map(w=>`<div class="watchcard">
-    <div class="watchrow">
-      <div>
-        <div class="watchtitle">${esc(w.departureDate)} ±2일 · ${esc(watchRegionText(w.region))}</div>
-        <div class="watchmeta">${esc(w.dep)} 출발 · ${esc(w.period)}일 일정 · 왕복 ${money(w.targetPrice)} 목표 · 목표가 도달 + 최저가 하락 알림<br>1시간마다 감시</div>
-      </div>
-      <span class="watchstate ${w.enabled?'on':'off'}">${w.enabled?'ON':'OFF'}</span>
-    </div>
-    <div class="watchactions">
-      <button data-toggle="${esc(w.id)}" data-enabled="${w.enabled?'0':'1'}">${w.enabled?'끄기':'다시 켜기'}</button>
-      <button class="delete" data-delete="${esc(w.id)}">삭제</button>
-    </div>
-  </div>`).join('');
+  $('watchList').innerHTML=list.map(w=>`<div class="watchcard"><div class="watchrow"><div><div class="watchtitle">${esc(w.departureDate)} ±2일 · ${esc(watchDestinationText(w))}</div><div class="watchmeta">${esc(w.dep)} 출발 · ${esc(w.period)}일 일정 · 왕복 ${money(w.targetPrice)} 목표 · 목표가 도달 + 최저가 하락 알림<br>1시간마다 감시</div></div><span class="watchstate ${w.enabled?'on':'off'}">${w.enabled?'ON':'OFF'}</span></div><div class="watchactions"><button data-toggle="${esc(w.id)}" data-enabled="${w.enabled?'0':'1'}">${w.enabled?'끄기':'다시 켜기'}</button><button class="delete" data-delete="${esc(w.id)}">삭제</button></div></div>`).join('');
   $('watchList').querySelectorAll('[data-toggle]').forEach(b=>b.onclick=()=>toggleWatch(b.dataset.toggle,b.dataset.enabled==='1'));
   $('watchList').querySelectorAll('[data-delete]').forEach(b=>b.onclick=()=>deleteWatch(b.dataset.delete));
 }
-async function loadWatches(){
-  const r=await fetch('/api/intl-flight-watch'),j=await r.json();
-  if(!r.ok)throw Error(j.error||'알림 목록 조회 실패');
-  renderWatchList(j.watches||[]);
-  return j.watches||[];
-}
-async function toggleWatch(id,enabled){
-  const r=await fetch('/api/intl-flight-watch',{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({id,enabled})}),j=await r.json();
-  if(!r.ok)throw Error(j.error||'알림 변경 실패');
-  await loadWatches();
-}
-async function deleteWatch(id){
-  const r=await fetch('/api/intl-flight-watch?id='+encodeURIComponent(id),{method:'DELETE'}),j=await r.json();
-  if(!r.ok)throw Error(j.error||'알림 삭제 실패');
-  renderWatchList(j.watches||[]);
-}
+async function loadWatches(){const r=await fetch('/api/intl-flight-watch'),j=await r.json();if(!r.ok)throw Error(j.error||'알림 목록 조회 실패');renderWatchList(j.watches||[]);return j.watches||[]}
+async function toggleWatch(id,enabled){const r=await fetch('/api/intl-flight-watch',{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({id,enabled})}),j=await r.json();if(!r.ok)throw Error(j.error||'알림 변경 실패');await loadWatches()}
+async function deleteWatch(id){const r=await fetch('/api/intl-flight-watch?id='+encodeURIComponent(id),{method:'DELETE'}),j=await r.json();if(!r.ok)throw Error(j.error||'알림 삭제 실패');renderWatchList(j.watches||[])}
+
 function fmtHistoryTime(v){try{return new Date(v).toLocaleString('ko-KR',{month:'numeric',day:'numeric',hour:'2-digit',minute:'2-digit'})}catch{return v||''}}
-function renderAlertHistory(items){
-  const list=Array.isArray(items)?items:[];
-  if(!list.length){$('alertHistory').innerHTML='<div class="muted">아직 발송된 국제선 알림 기록이 없습니다.</div>';return}
-  $('alertHistory').innerHTML=list.map(a=>`<div class="historyitem">
-    <div class="watchrow">
-      <div>
-        <div class="watchtitle">${esc(a.cityName||a.toCity)} · ${money(a.totalPrice)}</div>
-        <div class="watchmeta">${esc(a.departureDate)} → ${esc(a.returnDate)} · ${esc(a.toCity)}<br>${esc(a.watchDepartureDate)} ±2일 · ${esc(a.regionLabel||watchRegionText(a.region))} · 목표 ${money(a.targetPrice)}</div>
-      </div>
-      <span class="historytype ${a.type==='price_drop'?'drop':''}">${a.type==='price_drop'?'가격 하락':(a.type==='target_reached'?'목표가 도달':'신규 특가')}</span>
-    </div>
-    ${a.previousPrice?'<div class="small">이전 '+money(a.previousPrice)+' → 현재 '+money(a.totalPrice)+'</div>':''}
-    <div class="historytime">감지 ${fmtHistoryTime(a.detectedAt)}</div>
-  </div>`).join('');
-}
-async function loadAlertHistory(){
-  const r=await fetch('/api/intl-flight-alert-history'),j=await r.json();
-  if(!r.ok)throw Error(j.error||'최근 알림 조회 실패');
-  renderAlertHistory(j.alerts||[]);
-}
+function renderAlertHistory(items){const list=Array.isArray(items)?items:[];if(!list.length){$('alertHistory').innerHTML='<div class="muted">아직 발송된 국제선 알림 기록이 없습니다.</div>';return}$('alertHistory').innerHTML=list.map(a=>`<div class="historyitem"><div class="watchrow"><div><div class="watchtitle">${esc(a.cityName||a.toCity)} · ${money(a.totalPrice)}</div><div class="watchmeta">${esc(a.departureDate)} → ${esc(a.returnDate)} · ${esc(a.toCity)} · ${esc(a.airportName||'')}<br>${esc(a.watchDepartureDate)} ±2일 · ${esc(a.regionLabel||legacyRegionText(a.region))} · 목표 ${money(a.targetPrice)}</div></div><span class="historytype ${a.type==='price_drop'?'drop':''}">${a.type==='price_drop'?'가격 하락':(a.type==='target_reached'?'목표가 도달':'신규 특가')}</span></div>${a.previousPrice?'<div class="small">이전 '+money(a.previousPrice)+' → 현재 '+money(a.totalPrice)+'</div>':''}<div class="historytime">감지 ${fmtHistoryTime(a.detectedAt)}</div></div>`).join('')}
+async function loadAlertHistory(){const r=await fetch('/api/intl-flight-alert-history'),j=await r.json();if(!r.ok)throw Error(j.error||'최근 알림 조회 실패');renderAlertHistory(j.alerts||[])}
+
+$('airportSearch').addEventListener('input',renderAirportButtons);
 ['dDep','dDepartureDate','dPeriod','dTarget','rDep','rArr','rStart','rEnd','rPeriod'].forEach(id=>$(id).addEventListener('change',()=>{saveForms();if(id.startsWith('d'))updateSummary()}));
 $('discover').onclick=()=>doDiscover().catch(e=>$('state').textContent=e.message);
 $('routeSearch').onclick=()=>doRoute().catch(e=>$('routeState').textContent=e.message);
-$('watch').onclick=async()=>{try{saveForms();updateSummary();const p=discoverParams();$('state').textContent='푸시 알림을 등록 중입니다…';const subscription=await subscribe();const r=await fetch('/api/intl-flight-watch',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({...p,subscription})}),j=await r.json();if(!r.ok)throw Error(j.error||'등록 실패');$('state').innerHTML=`<span class="ok">🔔 알림 등록 완료</span><br>${esc(p.departureDate)} ±2일 · ${esc(regionText())} · 목표 ${money(p.targetPrice)} · 목표가 도달 + 가격 하락 감시`;await loadWatches();await doDiscover()}catch(e){$('state').innerHTML='<span class="warn">'+esc(e.message)+'</span>'}};
+$('watch').onclick=async()=>{try{saveForms();updateSummary();const p=discoverParams();$('state').textContent='푸시 알림을 등록 중입니다…';const subscription=await subscribe();const r=await fetch('/api/intl-flight-watch',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({...p,subscription})}),j=await r.json();if(!r.ok)throw Error(j.error||'등록 실패');$('state').innerHTML=`<span class="ok">🔔 알림 등록 완료</span><br>${esc(p.departureDate)} ±2일 · ${esc(p.destinationLabel)} · 목표 ${money(p.targetPrice)} · 목표가 도달 + 가격 하락 감시`;await loadWatches();await doDiscover()}catch(e){$('state').innerHTML='<span class="warn">'+esc(e.message)+'</span>'}};
 $('stop').onclick=async()=>{const r=await fetch('/api/intl-flight-watch',{method:'DELETE'}),j=await r.json();if(r.ok){renderWatchList(j.watches||[]);$('state').textContent='모든 알림을 껐습니다.'}};
+
 loadForms();
-loadWatches().catch(e=>{$('watchList').innerHTML='<div class="warn">'+esc(e.message)+'</div>'});
+loadAirportCatalog().then(()=>loadWatches()).catch(e=>{$('countryPanel').hidden=false;$('countryPanel').innerHTML='<div class="warn">'+esc(e.message)+'</div>'});
+loadWatches().catch(()=>{});
 loadAlertHistory().catch(e=>{$('alertHistory').innerHTML='<div class="warn">'+esc(e.message)+'</div>'});
 </script></body></html>
