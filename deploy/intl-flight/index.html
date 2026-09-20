@@ -204,7 +204,7 @@ function renderDestinationPicker(){renderContinents();renderCountries();renderAi
 async function loadAirportCatalog(){
   const dep=$('dDep').value.trim().toUpperCase()||'ICN';
   const period=+$('dPeriod').value||5;
-  $('countryPanel').hidden=false;$('countryPanel').innerHTML='<div class="muted">현재 가격 추적 가능한 공항을 불러오는 중입니다…</div>';
+  $('state').textContent='현재 가격 추적 가능한 국가·공항을 불러오는 중입니다…';
   const r=await fetch('/api/intl-airports?dep='+encodeURIComponent(dep)+'&period='+encodeURIComponent(period)),j=await r.json();
   if(!r.ok)throw Error(j.error||'공항 목록 조회 실패');
   airportCatalog=(j.airports||[]).filter(a=>continents.some(x=>x[0]===a.continent) && a.countryCode!=='KR');
@@ -273,7 +273,7 @@ $('watch').onclick=async()=>{try{saveForms();updateSummary();const p=discoverPar
 $('stop').onclick=async()=>{const r=await fetch('/api/intl-flight-watch',{method:'DELETE'}),j=await r.json();if(r.ok){renderWatchList(j.watches||[]);$('state').textContent='모든 알림을 껐습니다.'}};
 
 loadForms();
-loadAirportCatalog().then(()=>loadWatches()).catch(e=>{$('countryPanel').hidden=false;$('countryPanel').innerHTML='<div class="warn">'+esc(e.message)+'</div>'});
+loadAirportCatalog().then(()=>loadWatches()).catch(e=>{$('state').innerHTML='<span class="warn">'+esc(e.message)+'</span>'});
 loadWatches().catch(()=>{});
 loadAlertHistory().catch(e=>{$('alertHistory').innerHTML='<div class="warn">'+esc(e.message)+'</div>'});
 </script></body></html>
