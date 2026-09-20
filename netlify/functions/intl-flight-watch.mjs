@@ -1,5 +1,5 @@
 import { getStore } from '@netlify/blobs';
-import { discoverMrt } from './_intl-flight-lib.mjs';
+import { discoverMrt, trackMrt } from './_intl-flight-lib.mjs';
 
 const store=getStore({name:'intl-flight-alert',consistency:'strong'});
 const MAX_WATCHES=10;
@@ -95,13 +95,19 @@ export default async(req)=>{
       return Response.json({ok:true,duplicate:true,watch:publicWatch(duplicate)});
     }
 
-    const result=await discoverMrt({dep,period,region,targetPrice,departureDate});
+    const [result,tracking]=await Promise.all([
+      discoverMrt({dep,period,region,targetPrice,departureDate}),
+      trackMrt({dep,period,region,departureDate,limit:50})
+    ]);
+    const mergedRows=[...tracking.rows,...result.rows];
     const now=new Date().toISOString();
     const value={
       id:newId(),enabled:true,mode:'discover',dep,period,region,departureDate,targetPrice,
       subscription:body.subscription,
-      bestByDestination:bestMap(result.rows),
+      bestByDestination:bestMap(mergedRows),
       lastFares:result.rows,
+      trackedAirportCount:tracking.trackedAirportCount,
+      priceDropTracking:true,
       createdAt:now,updatedAt:now
     };
 
@@ -109,7 +115,7 @@ export default async(req)=>{
     await store.setJSON('watches',watches);
 
     return Response.json({
-      ok:true,watch:publicWatch(value),count:result.rows.length,
+      ok:true,watch:publicWatch(value),count:result.rows.length,trackedAirportCount:tracking.trackedAirportCount,
       windowStart:result.windowStart,windowEnd:result.windowEnd,cached:result.cached
     });
   }catch(e){
