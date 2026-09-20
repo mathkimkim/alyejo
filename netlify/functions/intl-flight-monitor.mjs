@@ -43,10 +43,12 @@ export default async()=>{
     try{
       const [result,tracking]=await Promise.all([
         discoverMrt({
-          dep:w.dep,period:w.period,region:w.region,targetPrice:w.targetPrice,departureDate:w.departureDate
+          dep:w.dep,period:w.period,region:w.region,targetPrice:w.targetPrice,departureDate:w.departureDate,
+          countries:w.countries||[],airports:w.airports||[]
         }),
         trackMrt({
-          dep:w.dep,period:w.period,region:w.region,departureDate:w.departureDate,limit:50
+          dep:w.dep,period:w.period,region:w.region,departureDate:w.departureDate,limit:50,
+          countries:w.countries||[],airports:w.airports||[]
         })
       ]);
 
@@ -79,7 +81,7 @@ export default async()=>{
           ? ` · ${Number(best.old.price).toLocaleString('ko-KR')}원→${best.totalPrice.toLocaleString('ko-KR')}원`
           : '';
         const more=alerts.length>1?` 외 ${alerts.length-1}곳`:'';
-        const condition=`${w.departureDate} ±2일 · ${regionLabel(w.region)}`;
+        const condition=`${w.departureDate} ±2일 · ${w.destinationLabel||regionLabel(w.region)}`;
         const detectedAt=new Date().toISOString();
         const alertType=best.alertType;
 
@@ -97,7 +99,9 @@ export default async()=>{
             type:a.alertType,
             dep:w.dep,
             region:w.region,
-            regionLabel:regionLabel(w.region),
+            countries:w.countries||[],
+            airports:w.airports||[],
+            regionLabel:w.destinationLabel||regionLabel(w.region),
             targetPrice:w.targetPrice,
             watchDepartureDate:w.departureDate,
             period:w.period,
