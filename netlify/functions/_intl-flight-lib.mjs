@@ -300,7 +300,7 @@ function resolveBulkDestinations(rows,index,region,targetPrice){
   return {resolved:[...dedup.values()],unresolvedCount};
 }
 
-export async function discoverMrt({dep,period,region='all',targetPrice=99999999,departureDate,countries=[],airports=[]}) {
+export async function discoverMrt({dep,period,region='all',targetPrice=99999999,departureDate,countries=[],airports=[],combineRegions=false}) {
   dep=cleanAirport(dep); period=validatePeriod(period); departureDate=validateDate(departureDate);
   targetPrice=Math.max(1,Number(targetPrice||0));
 
@@ -309,9 +309,26 @@ export async function discoverMrt({dep,period,region='all',targetPrice=99999999,
 
   const index=await airportIndex();
   const explicit=normalizeCodes(countries).length>0 || normalizeCodes(airports).length>0;
+  const hasRegions=String(region||'').split(',').map(x=>x.trim()).filter(Boolean).length>0;
   let candidates=[],cached=false,bulkCount=0,unresolvedCount=0;
 
-  if(explicit){
+  if(combineRegions){
+    const map=new Map();
+    if(hasRegions){
+      const bulk=await bulkLowest(dep,period);
+      cached=bulk.cached;
+      bulkCount=bulk.rows.length;
+      const expanded=resolveBulkDestinations(bulk.rows,index,region,targetPrice);
+      unresolvedCount=expanded.unresolvedCount;
+      for(const x of expanded.resolved) map.set(x.airportCode,x);
+    }
+    if(explicit){
+      for(const x of selectedAirportMetas(index,countries,airports)){
+        if(!map.has(x.airportCode)) map.set(x.airportCode,{...x,referenceLowest:0,sourceDestinationCode:x.airportCode});
+      }
+    }
+    candidates=[...map.values()];
+  }else if(explicit){
     candidates=selectedAirportMetas(index,countries,airports).map(x=>({...x,referenceLowest:0,sourceDestinationCode:x.airportCode}));
   }else{
     const bulk=await bulkLowest(dep,period);
@@ -347,14 +364,29 @@ export async function discoverMrt({dep,period,region='all',targetPrice=99999999,
     unresolvedCount,successCount,failedCount};
 }
 
-export async function trackMrt({dep,period,region='all',departureDate,limit=50,countries=[],airports=[]}) {
+export async function trackMrt({dep,period,region='all',departureDate,limit=50,countries=[],airports=[],combineRegions=false}) {
   dep=cleanAirport(dep); period=validatePeriod(period); departureDate=validateDate(departureDate);
   const windowStart=shiftDate(departureDate,-2);
   const windowEnd=shiftDate(departureDate,2);
   const index=await airportIndex();
   const explicit=normalizeCodes(countries).length>0 || normalizeCodes(airports).length>0;
+  const hasRegions=String(region||'').split(',').map(x=>x.trim()).filter(Boolean).length>0;
   let candidates;
-  if(explicit){
+  if(combineRegions){
+    const map=new Map();
+    if(hasRegions){
+      const bulk=await bulkLowest(dep,period);
+      const expanded=resolveBulkDestinations(bulk.rows,index,region,Number.MAX_SAFE_INTEGER);
+      for(const x of expanded.resolved.sort((a,b)=>a.referenceLowest-b.referenceLowest)
+        .slice(0,Math.max(1,Math.min(50,Number(limit)||50)))) map.set(x.airportCode,x);
+    }
+    if(explicit){
+      for(const x of selectedAirportMetas(index,countries,airports)){
+        if(!map.has(x.airportCode)) map.set(x.airportCode,{...x,referenceLowest:0,sourceDestinationCode:x.airportCode});
+      }
+    }
+    candidates=[...map.values()];
+  }else if(explicit){
     candidates=selectedAirportMetas(index,countries,airports).map(x=>({...x,referenceLowest:0,sourceDestinationCode:x.airportCode}));
   }else{
     const bulk=await bulkLowest(dep,period);
