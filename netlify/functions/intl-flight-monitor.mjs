@@ -29,6 +29,71 @@ function eventKey(a){
   return [a.toCity,a.departureDate,a.returnDate,a.totalPrice,a.old?.price||''].join('|');
 }
 
+function threadsEventKey(a){
+  return [a.watch?.dep||a.fromCity||'',a.toCity,a.departureDate,a.returnDate,a.totalPrice].join('|');
+}
+
+function originName(code){
+  const map={ICN:'인천',GMP:'김포',PUS:'부산',CJU:'제주',TAE:'대구',CJJ:'청주',MWX:'무안'};
+  return map[code]||code;
+}
+
+function bookingUrl(a){
+  const dep=String(a.watch?.dep||a.fromCity||'ICN').toUpperCase();
+  const arr=String(a.toCity||'').toUpperCase();
+  const trip=encodeURIComponent('A.'+dep+'.A.'+arr+'.'+a.departureDate+'/A.'+arr+'.A.'+dep+'.'+a.returnDate);
+  return 'https://air-web.myrealtrip.com/results?adult=1&tripType=ROUND_TRIP&trip='+trip;
+}
+
+function threadsText(group){
+  const best=group[0];
+  const targetHit=group.some(x=>x.alertType==='target_reached');
+  const title=targetHit
+    ? '🎯 '+(best.cityName||best.toCity)+' 왕복 목표가 도달'
+    : '📉 '+(best.cityName||best.toCity)+' 왕복 최저가 하락';
+  const dep=String(best.watch?.dep||best.fromCity||'ICN').toUpperCase();
+  const oldPrices=group.map(x=>Number(x.old?.price||0)).filter(x=>x>Number(best.totalPrice));
+  const oldPrice=oldPrices.length?Math.min(...oldPrices):0;
+  const diff=oldPrice?oldPrice-Number(best.totalPrice):0;
+  const priceLine=oldPrice
+    ? oldPrice.toLocaleString('ko-KR')+'원 → '+Number(best.totalPrice).toLocaleString('ko-KR')+'원\n▼ '+diff.toLocaleString('ko-KR')+'원'
+    : Number(best.totalPrice).toLocaleString('ko-KR')+'원';
+  return [
+    title,
+    '',
+    priceLine,
+    '',
+    '✈️ '+originName(dep)+'('+dep+') → '+(best.cityName||best.toCity)+'('+best.toCity+')',
+    '📅 '+best.departureDate+' → '+best.returnDate,
+    '',
+    '실시간 항공권 확인 ↓',
+    bookingUrl(best)
+  ].join('\n');
+}
+
+async function postThreads(text,accessToken){
+  const params=new URLSearchParams({
+    media_type:'TEXT',
+    text,
+    auto_publish_text:'true'
+  });
+  const response=await fetch('https://graph.threads.net/v1.0/me/threads',{
+    method:'POST',
+    headers:{
+      Authorization:'Bearer '+accessToken,
+      'Content-Type':'application/x-www-form-urlencoded'
+    },
+    body:params
+  });
+  const result=await response.json().catch(()=>({}));
+  if(!response.ok){
+    const error=new Error(result?.error?.message||'Threads 게시 실패');
+    error.code=result?.error?.code||response.status;
+    throw error;
+  }
+  return result;
+}
+
 export default async()=>{
   const watches=await loadWatches();
   const enabled=watches.filter(w=>w?.enabled&&w.subscription&&w.mode==='discover');
@@ -43,6 +108,10 @@ export default async()=>{
   let history=await store.get('recent-alerts',{type:'json'});
   history=Array.isArray(history)?history:[];
   const pending=[];
+  const threadsAccessToken=Netlify.env.get('THREADS_ACCESS_TOKEN')||'';
+  let threadsPosted=await store.get('threads-posted-events',{type:'json'});
+  threadsPosted=Array.isArray(threadsPosted)?threadsPosted:[];
+  const threadsPostedSet=new Set(threadsPosted.map(x=>x.key));
 
   for(const w of enabled){
     try{
@@ -108,6 +177,35 @@ export default async()=>{
     groups.get(key).push(a);
   }
 
+  if(threadsAccessToken && pending.length){
+    const threadsGroups=new Map();
+    for(const a of pending){
+      const key=threadsEventKey(a);
+      if(!threadsGroups.has(key)) threadsGroups.set(key,[]);
+      threadsGroups.get(key).push(a);
+    }
+
+    for(const [key,group] of threadsGroups){
+      if(threadsPostedSet.has(key)) continue;
+      try{
+        const result=await postThreads(threadsText(group),threadsAccessToken);
+        const item={
+          key,
+          id:result?.id||null,
+          postedAt:new Date().toISOString(),
+          toCity:group[0].toCity,
+          departureDate:group[0].departureDate,
+          returnDate:group[0].returnDate,
+          totalPrice:group[0].totalPrice
+        };
+        threadsPosted=[item,...threadsPosted].slice(0,300);
+        threadsPostedSet.add(key);
+      }catch(e){
+        console.error('threads-auto-post',key,e?.code||'',e?.message||e);
+      }
+    }
+  }
+
   const detectedAt=new Date().toISOString();
   const newHistory=[];
 
@@ -168,6 +266,7 @@ export default async()=>{
   if(newHistory.length) history=[...newHistory,...history].slice(0,50);
   await store.setJSON('watches',watches);
   await store.setJSON('recent-alerts',history);
+  if(threadsAccessToken) await store.setJSON('threads-posted-events',threadsPosted);
 };
 
 export const config={schedule:'0 * * * *'};
