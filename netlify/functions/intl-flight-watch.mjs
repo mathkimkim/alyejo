@@ -35,7 +35,7 @@ async function loadWatches(){
 
 function publicWatch(w){
   return {
-    id:w.id,enabled:!!w.enabled,mode:w.mode,dep:w.dep,period:w.period,region:w.region,
+    id:w.id,enabled:!!w.enabled,mode:w.mode,dep:w.dep,period:w.period,region:w.region,combineRegions:!!w.combineRegions,
     countries:w.countries||[],airports:w.airports||[],destinationLabel:w.destinationLabel||'',
     departureDate:w.departureDate,targetPrice:w.targetPrice,priceDropTracking:w.priceDropTracking!==false,priceDropThresholdPercent:w.priceDropThresholdPercent||10,freshVerifyBeforeAlert:w.freshVerifyBeforeAlert!==false,trackedAirportCount:w.trackedAirportCount||0,createdAt:w.createdAt,updatedAt:w.updatedAt
   };
@@ -81,14 +81,15 @@ export default async(req)=>{
     const targetPrice=Math.max(1,Number(body.targetPrice||0));
     const dep=String(body.dep||'ICN').toUpperCase();
     const period=Number(body.period||5);
-    const region=body.region||'all';
+    const region=body.region??'all';
+    const combineRegions=body.combineRegions===true;
     const countries=Array.isArray(body.countries)?body.countries.map(x=>String(x).toUpperCase()):[];
     const airports=Array.isArray(body.airports)?body.airports.map(x=>String(x).toUpperCase()):[];
     const destinationLabel=String(body.destinationLabel||'');
     const departureDate=body.departureDate;
 
     const duplicate=watches.find(w=>
-      w.dep===dep && Number(w.period)===period && w.region===region &&
+      w.dep===dep && Number(w.period)===period && w.region===region && !!w.combineRegions===combineRegions &&
       JSON.stringify(w.countries||[])===JSON.stringify(countries) && JSON.stringify(w.airports||[])===JSON.stringify(airports) &&
       w.departureDate===departureDate && Number(w.targetPrice)===targetPrice
     );
@@ -101,14 +102,14 @@ export default async(req)=>{
     }
 
     const [result,tracking]=await Promise.all([
-      discoverMrt({dep,period,region,targetPrice,departureDate,countries,airports}),
-      trackMrt({dep,period,region,departureDate,limit:50,countries,airports})
+      discoverMrt({dep,period,region,targetPrice,departureDate,countries,airports,combineRegions}),
+      trackMrt({dep,period,region,departureDate,limit:50,countries,airports,combineRegions})
     ]);
     const mergedRows=[...tracking.rows,...result.rows];
     const initialBest=bestMap(mergedRows);
     const now=new Date().toISOString();
     const value={
-      id:newId(),enabled:true,mode:'discover',dep,period,region,countries,airports,destinationLabel,departureDate,targetPrice,
+      id:newId(),enabled:true,mode:'discover',dep,period,region,combineRegions,countries,airports,destinationLabel,departureDate,targetPrice,
       subscription:body.subscription,
       bestByDestination:initialBest,
       alertBaselineByDestination:{...initialBest},
