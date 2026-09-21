@@ -16,13 +16,17 @@ function bestMap(rows){
 }
 
 function regionLabel(expr){
-  const map={all:'전체',asia:'아시아',europe:'유럽',northamerica:'북미',oceania:'오세아니아',middleeast:'중동',africa:'아프리카',japan:'일본',seasia:'동남아',greater_china:'중화권',other_asia:'기타 아시아',western_europe:'서유럽',southern_europe:'남유럽',northern_europe:'북유럽',eastern_europe:'동유럽',usa:'미국',canada:'캐나다',mexico:'멕시코',australia:'호주',newzealand:'뉴질랜드',south_pacific:'남태평양',uae:'UAE',gulf:'걸프',levant_turkey:'터키·레반트',other_middleeast:'기타 중동',north_africa:'북아프리카',east_africa:'동아프리카',southern_africa:'남아프리카',west_central_africa:'서·중앙아프리카'};
+  const map={all:'전체',asia:'아시아',europe:'유럽',northamerica:'북미',oceania:'오세아니아',middleeast:'중동',japan:'일본',seasia:'동남아',greater_china:'중화권',other_asia:'기타 아시아',western_europe:'서유럽',southern_europe:'남유럽',northern_europe:'북유럽',eastern_europe:'동유럽',usa:'미국',canada:'캐나다',mexico:'멕시코',australia:'호주',newzealand:'뉴질랜드',south_pacific:'남태평양',uae:'UAE',gulf:'걸프',levant_turkey:'터키·레반트',other_middleeast:'기타 중동'};
   return String(expr||'all').split(',').map(x=>map[x]||x).join('·');
 }
 
 async function loadWatches(){
   const list=await store.get('watches',{type:'json'});
   return Array.isArray(list)?list:[];
+}
+
+function eventKey(a){
+  return [a.toCity,a.departureDate,a.returnDate,a.totalPrice,a.old?.price||''].join('|');
 }
 
 export default async()=>{
@@ -38,6 +42,7 @@ export default async()=>{
   webpush.setVapidDetails(subject,pub,priv);
   let history=await store.get('recent-alerts',{type:'json'});
   history=Array.isArray(history)?history:[];
+  const pending=[];
 
   for(const w of enabled){
     try{
@@ -55,7 +60,6 @@ export default async()=>{
       const mergedRows=[...tracking.rows,...result.rows];
       const previous=w.bestByDestination||{};
       const current=bestMap(mergedRows);
-      const alerts=[];
 
       for(const [toCity,cur] of Object.entries(current)){
         const old=previous[toCity];
@@ -71,55 +75,16 @@ export default async()=>{
 
         if(type){
           const row=mergedRows.find(x=>x.toCity===toCity && x.key===cur.key);
-          if(row) alerts.push({...row,old,alertType:type});
-        }
-      }
-
-      if(alerts.length){
-        const best=[...alerts].sort((a,b)=>a.totalPrice-b.totalPrice)[0];
-        const priceDrop=best.old?.price && best.totalPrice<best.old.price
-          ? ` · ${Number(best.old.price).toLocaleString('ko-KR')}원→${best.totalPrice.toLocaleString('ko-KR')}원`
-          : '';
-        const more=alerts.length>1?` 외 ${alerts.length-1}곳`:'';
-        const condition=`${w.departureDate} ±2일 · ${w.destinationLabel||regionLabel(w.region)}`;
-        const detectedAt=new Date().toISOString();
-        const alertType=best.alertType;
-
-        try{
-          await webpush.sendNotification(w.subscription,JSON.stringify({
-            title:alertType==='target_reached'?'🎯 목표가 도달':'📉 해외 최저가 하락',
-            body:`[${condition}] ${best.cityName||best.toCity} · ${best.departureDate}~${best.returnDate} · ${best.totalPrice.toLocaleString('ko-KR')}원${priceDrop}${more}`,
-            url:'/intl-flight/'
-          }));
-
-          const entries=alerts.map(a=>({
-            id:[detectedAt,w.id,a.toCity,a.key].join('|'),
-            detectedAt,
-            watchId:w.id,
-            type:a.alertType,
-            dep:w.dep,
-            region:w.region,
-            countries:w.countries||[],
-            airports:w.airports||[],
-            regionLabel:w.destinationLabel||regionLabel(w.region),
-            targetPrice:w.targetPrice,
-            watchDepartureDate:w.departureDate,
-            period:w.period,
-            cityName:a.cityName||a.toCity,
-            airportName:a.airportName||'',
-            countryName:a.countryName||'',
-            toCity:a.toCity,
-            departureDate:a.departureDate,
-            returnDate:a.returnDate,
-            totalPrice:a.totalPrice,
-            previousPrice:a.old?.price||null
-          }));
-
-          history=[...entries,...history].slice(0,50);
-        }catch(pushErr){
-          const code=pushErr?.statusCode;
-          if(code===404||code===410) w.enabled=false;
-          console.error('intl-flight-push',w.id,pushErr);
+          if(row){
+            pending.push({
+              ...row,
+              old,
+              alertType:type,
+              watch:w,
+              subscription:w.subscription,
+              conditionLabel:`${w.departureDate} ±2일 · ${w.destinationLabel||regionLabel(w.region)} · 목표 ${Number(w.targetPrice).toLocaleString('ko-KR')}원`
+            });
+          }
         }
       }
 
@@ -135,6 +100,72 @@ export default async()=>{
     }
   }
 
+  const groups=new Map();
+  for(const a of pending){
+    const endpoint=a.subscription?.endpoint||'';
+    const key=endpoint+'||'+eventKey(a);
+    if(!groups.has(key)) groups.set(key,[]);
+    groups.get(key).push(a);
+  }
+
+  const detectedAt=new Date().toISOString();
+  const newHistory=[];
+
+  for(const group of groups.values()){
+    const best=group[0];
+    const targetHit=group.some(x=>x.alertType==='target_reached');
+    const alertType=targetHit?'target_reached':'price_drop';
+    const conditions=[...new Set(group.map(x=>x.conditionLabel))];
+    const watchIds=[...new Set(group.map(x=>x.watch.id))];
+    const targetPrices=[...new Set(group.map(x=>Number(x.watch.targetPrice)))].sort((a,b)=>a-b);
+    const priceDrop=best.old?.price && best.totalPrice<best.old.price
+      ? ` · ${Number(best.old.price).toLocaleString('ko-KR')}원→${best.totalPrice.toLocaleString('ko-KR')}원`
+      : '';
+    const conditionNote=conditions.length>1?` · 등록조건 ${conditions.length}개`:'';
+
+    try{
+      await webpush.sendNotification(best.subscription,JSON.stringify({
+        title:alertType==='target_reached'?'🎯 목표가 도달':'📉 해외 최저가 하락',
+        body:`${best.cityName||best.toCity} · ${best.departureDate}~${best.returnDate} · ${best.totalPrice.toLocaleString('ko-KR')}원${priceDrop}${conditionNote}`,
+        url:'/intl-flight/'
+      }));
+
+      newHistory.push({
+        id:[detectedAt,best.toCity,best.departureDate,best.returnDate,best.totalPrice].join('|'),
+        detectedAt,
+        watchId:watchIds[0],
+        watchIds,
+        conditionCount:conditions.length,
+        conditions,
+        targetPrices,
+        type:alertType,
+        dep:best.watch.dep,
+        region:best.watch.region,
+        countries:best.watch.countries||[],
+        airports:best.watch.airports||[],
+        regionLabel:best.watch.destinationLabel||regionLabel(best.watch.region),
+        targetPrice:Math.max(...targetPrices),
+        watchDepartureDate:best.watch.departureDate,
+        period:best.watch.period,
+        cityName:best.cityName||best.toCity,
+        airportName:best.airportName||'',
+        countryName:best.countryName||'',
+        toCity:best.toCity,
+        departureDate:best.departureDate,
+        returnDate:best.returnDate,
+        totalPrice:best.totalPrice,
+        previousPrice:best.old?.price||null
+      });
+    }catch(pushErr){
+      const code=pushErr?.statusCode;
+      if(code===404||code===410){
+        for(const a of group) a.watch.enabled=false;
+      }
+      console.error('intl-flight-push',best.toCity,pushErr);
+    }
+  }
+
+  if(newHistory.length) history=[...newHistory,...history].slice(0,50);
   await store.setJSON('watches',watches);
   await store.setJSON('recent-alerts',history);
 };
