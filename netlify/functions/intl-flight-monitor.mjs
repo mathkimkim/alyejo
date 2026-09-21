@@ -149,11 +149,11 @@ export default async()=>{
       const [result,tracking]=await Promise.all([
         discoverMrt({
           dep:w.dep,period:w.period,region:w.region,targetPrice:w.targetPrice,departureDate:w.departureDate,
-          countries:w.countries||[],airports:w.airports||[]
+          countries:w.countries||[],airports:w.airports||[],combineRegions:!!w.combineRegions
         }),
         trackMrt({
           dep:w.dep,period:w.period,region:w.region,departureDate:w.departureDate,limit:50,
-          countries:w.countries||[],airports:w.airports||[]
+          countries:w.countries||[],airports:w.airports||[],combineRegions:!!w.combineRegions
         })
       ]);
 
