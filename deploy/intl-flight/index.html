@@ -263,7 +263,18 @@ async function deleteWatch(id){const r=await fetch('/api/intl-flight-watch?id='+
 
 function fmtHistoryTime(v){try{return new Date(v).toLocaleString('ko-KR',{month:'numeric',day:'numeric',hour:'2-digit',minute:'2-digit'})}catch{return v||''}}
 function renderAlertHistory(items){const list=Array.isArray(items)?items:[];if(!list.length){$('alertHistory').innerHTML='<div class="muted">아직 발송된 국제선 알림 기록이 없습니다.</div>';return}$('alertHistory').innerHTML=list.map(a=>`<div class="historyitem"><div class="watchrow"><div><div class="watchtitle">${esc(a.cityName||a.toCity)} · ${money(a.totalPrice)}</div><div class="watchmeta">${esc(a.departureDate)} → ${esc(a.returnDate)} · ${esc(a.toCity)} · ${esc(a.airportName||'')}<br>${esc(a.watchDepartureDate)} ±2일 · ${esc(a.regionLabel||legacyRegionText(a.region))} · 목표 ${money(a.targetPrice)}</div></div><span class="historytype ${a.type==='price_drop'?'drop':''}">${a.type==='price_drop'?'가격 하락':(a.type==='target_reached'?'목표가 도달':'신규 특가')}</span></div>${a.previousPrice?'<div class="small">이전 '+money(a.previousPrice)+' → 현재 '+money(a.totalPrice)+'</div>':''}<div class="historytime">감지 ${fmtHistoryTime(a.detectedAt)}</div></div>`).join('')}
-async function loadAlertHistory(){const r=await fetch('/api/intl-flight-alert-history'),j=await r.json();if(!r.ok)throw Error(j.error||'최근 알림 조회 실패');renderAlertHistory(j.alerts||[])}
+async function loadAlertHistory(){const r=await fetch('/api/intl-flight-alert-history?t='+Date.now(),{cache:'no-store'}),j=await r.json();if(!r.ok)throw Error(j.error||'최근 알림 조회 실패');renderAlertHistory(j.alerts||[])}
+let lastHistoryRefresh=0;
+async function refreshHistoryOnResume(){
+  const now=Date.now();
+  if(now-lastHistoryRefresh<1500)return;
+  lastHistoryRefresh=now;
+  await Promise.allSettled([loadAlertHistory(),loadWatches()]);
+}
+document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')refreshHistoryOnResume()});
+window.addEventListener('focus',refreshHistoryOnResume);
+window.addEventListener('pageshow',refreshHistoryOnResume);
+
 
 $('airportSearch').addEventListener('input',renderAirportButtons);
 ['dDep','dDepartureDate','dPeriod','dTarget','rDep','rArr','rStart','rEnd','rPeriod'].forEach(id=>$(id).addEventListener('change',()=>{saveForms();if(id.startsWith('d'))updateSummary();if(id==='dDep'||id==='dPeriod'){loadAirportCatalog().catch(e=>{$('state').innerHTML='<span class="warn">'+esc(e.message)+'</span>'})}}));
