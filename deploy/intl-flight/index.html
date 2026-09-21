@@ -238,12 +238,12 @@ function loadForms(){
   updateSummary();
 }
 
-function bookingUrl(f){const dep=String(f.fromCity||'ICN').toUpperCase(),arr=String(f.toCity||'').toUpperCase();const trip=encodeURIComponent('A.'+dep+'.A.'+arr+'.'+f.departureDate+'/A.'+arr+'.A.'+dep+'.'+f.returnDate);return 'https://air-web.myrealtrip.com/results?adult=1&tripType=ROUND_TRIP&trip='+trip}
+function bookingUrl(f,source='app'){const dep=String(f.dep||f.fromCity||$('dDep')?.value||'ICN').toUpperCase(),arr=String(f.toCity||'').toUpperCase();const q=new URLSearchParams({dep,arr,departureDate:f.departureDate,returnDate:f.returnDate,source});return '/api/intl-flight-book?'+q.toString()}
 function shortMoney(n){if(!n)return '-';const v=Number(n);return v>=10000?(v/10000).toFixed(v%10000?1:0)+'만':'₩'+v.toLocaleString('ko-KR')}
 function uniqueBest(rows){const map=new Map();for(const f of rows.slice().sort((a,b)=>a.totalPrice-b.totalPrice)){if(!map.has(f.toCity))map.set(f.toCity,f)}return [...map.values()]}
 function renderBest(){
   const best=uniqueBest(lastRows).slice(0,3);
-  $('bestResults').innerHTML=best.length?'<div class="best-title">🔥 이번 검색 BEST 3</div><div class="bestgrid">'+best.map((f,i)=>`<a class="bestitem" href="${bookingUrl(f)}" target="_blank" rel="noopener"><span class="rank">${i+1}</span><span class="bestmain"><span class="bestname">${esc(f.cityName||f.airportName||f.toCity)} <span class="country">${esc(f.countryName||f.countryCode||'')}</span></span><span class="bestmeta">${esc(f.departureDate)} → ${esc(f.returnDate)} · ${esc(f.toCity)}</span></span><span class="bestprice">${money(f.totalPrice)}</span></a>`).join('')+'</div>':'';
+  $('bestResults').innerHTML=best.length?'<div class="best-title">🔥 이번 검색 BEST 3</div><div class="bestgrid">'+best.map((f,i)=>`<a class="bestitem" href="${bookingUrl({...f,dep:$('dDep').value},'best')}" target="_blank" rel="noopener"><span class="rank">${i+1}</span><span class="bestmain"><span class="bestname">${esc(f.cityName||f.airportName||f.toCity)} <span class="country">${esc(f.countryName||f.countryCode||'')}</span></span><span class="bestmeta">${esc(f.departureDate)} → ${esc(f.returnDate)} · ${esc(f.toCity)}</span></span><span class="bestprice">${money(f.totalPrice)}</span></a>`).join('')+'</div>':'';
 }
 function renderTabs(){
   const tabs=['all',...lastWindow];
@@ -256,9 +256,9 @@ function renderTabs(){
 }
 function renderDiscover(){
   const rows=(activeDate==='all'?lastRows:lastRows.filter(x=>x.departureDate===activeDate)).slice().sort((a,b)=>a.totalPrice-b.totalPrice);
-  $('discoverResults').innerHTML=rows.length?rows.map(f=>`<a class="fare" href="${bookingUrl(f)}" target="_blank" rel="noopener"><div class="top"><span>${esc(f.cityName||f.airportName||f.toCity)} <span class="country">${esc(f.countryName||f.countryCode||'')}</span></span><span class="price">${money(f.totalPrice)} 〉</span></div><div class="small">${esc(f.departureDate)} → ${esc(f.returnDate)} · ${esc(f.toCity)} · ${esc(f.period)}일</div></a>`).join(''):'<div class="empty">이 날짜에는 조건에 맞는 여행지가 없습니다.</div>';
+  $('discoverResults').innerHTML=rows.length?rows.map(f=>`<a class="fare" href="${bookingUrl({...f,dep:$('dDep').value},'results')}" target="_blank" rel="noopener"><div class="top"><span>${esc(f.cityName||f.airportName||f.toCity)} <span class="country">${esc(f.countryName||f.countryCode||'')}</span></span><span class="price">${money(f.totalPrice)} 〉</span></div><div class="small">${esc(f.departureDate)} → ${esc(f.returnDate)} · ${esc(f.toCity)} · ${esc(f.period)}일</div></a>`).join(''):'<div class="empty">이 날짜에는 조건에 맞는 여행지가 없습니다.</div>';
 }
-function renderRoute(rows){$('routeResults').innerHTML=rows.length?rows.map(f=>`<a class="fare" href="${bookingUrl(f)}" target="_blank" rel="noopener"><div class="top"><span>${esc(f.departureDate)} → ${esc(f.returnDate)}</span><span class="price">${money(f.totalPrice)}</span></div><div class="small">${esc(f.airline||'항공사 미표시')} · ${esc(f.period)}일</div><span class="book">실시간 항공권 확인 →</span></a>`).join(''):'조회된 최저가 데이터가 없습니다.'}
+function renderRoute(rows){$('routeResults').innerHTML=rows.length?rows.map(f=>`<a class="fare" href="${bookingUrl({...f,dep:$('rDep').value},'route')}" target="_blank" rel="noopener"><div class="top"><span>${esc(f.departureDate)} → ${esc(f.returnDate)}</span><span class="price">${money(f.totalPrice)}</span></div><div class="small">${esc(f.airline||'항공사 미표시')} · ${esc(f.period)}일</div><span class="book">실시간 항공권 확인 →</span></a>`).join(''):'조회된 최저가 데이터가 없습니다.'}
 
 async function doDiscover(){
   saveForms();updateSummary();const p=discoverParams();$('state').textContent='최저가를 비교 중입니다…';
@@ -324,7 +324,7 @@ function renderAlertHistory(items=lastHistory){
     const badge=(a.conditionCount||1)>1?`<span class="conditionbadge">등록조건 ${a.conditionCount}개</span>`:'';
     const type=a.type==='target_reached'?'목표가 도달':'가격 하락';
     const change=a.previousPrice?`<span class="historydrop">${money(a.previousPrice)} → ${money(a.totalPrice)}${diff>0?' · ▼'+money(diff):''}</span>`:'';
-    const url=bookingUrl({...a,fromCity:a.dep||'ICN'});
+    const url=bookingUrl({...a,dep:a.dep||'ICN'},'history');
     return `<a class="historyitem" href="${url}" target="_blank" rel="noopener"><div class="historyhead"><div><span class="historyname">${esc(a.cityName||a.toCity)} · ${esc(a.toCity)}</span>${badge}</div><span class="historyprice">${money(a.totalPrice)} 〉</span></div><div class="historychange">${change}</div><div class="historytime">${esc(a.departureDate)} → ${esc(a.returnDate)} · ${type} · 감지 ${fmtHistoryTime(a.detectedAt)}</div></a>`;
   }).join('');
   $('historyMore').hidden=total<=5;
