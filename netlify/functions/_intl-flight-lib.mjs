@@ -52,7 +52,7 @@ export async function flightPartnerLink({dep,arr,departureDate,returnDate}) {
 
   const cacheKey=['partner-flight-link-v1',dep,arr,departureDate,returnDate].join(':');
   const cached=await cacheStore.get(cacheKey,{type:'json'});
-  if(cached?.mylink) return {url:cached.mylink,partner:true,cached:true,landingUrl:cached.landingUrl||''};
+  if(cached?.mylink) return {url:cached.mylink,partner:true,cached:true,mylinkId:cached.mylinkId||null,landingUrl:cached.landingUrl||''};
 
   const landingResponse=await post('/v1/products/flight/fare-query-landing-url',{
     depAirportCd:dep,
@@ -82,7 +82,7 @@ export async function flightPartnerLink({dep,arr,departureDate,returnDate}) {
     landingUrl
   });
 
-  return {url:mylink,partner:true,cached:false,landingUrl};
+  return {url:mylink,partner:true,cached:false,mylinkId:mylinkResponse?.data?.mylinkId||null,landingUrl};
 }
 
 export async function searchMrt({ dep, arr, start, end, period }) {
