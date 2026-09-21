@@ -37,7 +37,7 @@ function publicWatch(w){
   return {
     id:w.id,enabled:!!w.enabled,mode:w.mode,dep:w.dep,period:w.period,region:w.region,
     countries:w.countries||[],airports:w.airports||[],destinationLabel:w.destinationLabel||'',
-    departureDate:w.departureDate,targetPrice:w.targetPrice,priceDropTracking:w.priceDropTracking!==false,trackedAirportCount:w.trackedAirportCount||0,createdAt:w.createdAt,updatedAt:w.updatedAt
+    departureDate:w.departureDate,targetPrice:w.targetPrice,priceDropTracking:w.priceDropTracking!==false,priceDropThresholdPercent:w.priceDropThresholdPercent||10,freshVerifyBeforeAlert:w.freshVerifyBeforeAlert!==false,trackedAirportCount:w.trackedAirportCount||0,createdAt:w.createdAt,updatedAt:w.updatedAt
   };
 }
 
@@ -105,14 +105,18 @@ export default async(req)=>{
       trackMrt({dep,period,region,departureDate,limit:50,countries,airports})
     ]);
     const mergedRows=[...tracking.rows,...result.rows];
+    const initialBest=bestMap(mergedRows);
     const now=new Date().toISOString();
     const value={
       id:newId(),enabled:true,mode:'discover',dep,period,region,countries,airports,destinationLabel,departureDate,targetPrice,
       subscription:body.subscription,
-      bestByDestination:bestMap(mergedRows),
+      bestByDestination:initialBest,
+      alertBaselineByDestination:{...initialBest},
       lastFares:result.rows,
       trackedAirportCount:tracking.trackedAirportCount,
       priceDropTracking:true,
+      priceDropThresholdPercent:10,
+      freshVerifyBeforeAlert:true,
       createdAt:now,updatedAt:now
     };
 
