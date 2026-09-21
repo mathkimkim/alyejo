@@ -26,6 +26,17 @@ async function loadWatches(){
   return Array.isArray(list)?list:[];
 }
 
+async function saveMonitorRun(run){
+  let runs=await store.get('monitor-runs',{type:'json'});
+  runs=Array.isArray(runs)?runs:[];
+  const idx=runs.findIndex(x=>x.id===run.id);
+  if(idx>=0) runs[idx]={...runs[idx],...run};
+  else runs.unshift(run);
+  const cutoff=Date.now()-48*60*60*1000;
+  runs=runs.filter(x=>new Date(x.startedAt||0).getTime()>=cutoff).slice(0,60);
+  await store.setJSON('monitor-runs',runs);
+}
+
 function eventKey(a){
   return [a.toCity,a.departureDate,a.returnDate,a.totalPrice,a.old?.price||''].join('|');
 }
@@ -90,14 +101,39 @@ async function postThreads(text,accessToken,linkAttachment){
 }
 
 export default async()=>{
+  const startedAt=new Date().toISOString();
+  const run={
+    id:'run_'+Date.now()+'_'+Math.random().toString(36).slice(2,8),
+    startedAt,
+    finishedAt:null,
+    status:'running',
+    watchCount:0,
+    candidateCount:0,
+    freshVerifyCount:0,
+    alertCount:0,
+    pushCount:0,
+    threadsCount:0,
+    errorCount:0,
+    threadsPosts:[]
+  };
+
   const watches=await loadWatches();
   const enabled=watches.filter(w=>w?.enabled&&w.subscription&&w.mode==='discover');
-  if(!enabled.length) return;
+  run.watchCount=enabled.length;
+  await saveMonitorRun(run);
+
+  if(!enabled.length){
+    await saveMonitorRun({...run,status:'no_watches',finishedAt:new Date().toISOString()});
+    return;
+  }
 
   const pub=Netlify.env.get('VAPID_PUBLIC_KEY');
   const priv=Netlify.env.get('VAPID_PRIVATE_KEY');
   const subject=Netlify.env.get('VAPID_SUBJECT')||'mailto:owner@example.com';
-  if(!pub||!priv) return;
+  if(!pub||!priv){
+    await saveMonitorRun({...run,status:'error',errorCount:1,finishedAt:new Date().toISOString(),lastError:'VAPID 환경변수가 없습니다.'});
+    return;
+  }
 
   webpush.setVapidDetails(subject,pub,priv);
   let history=await store.get('recent-alerts',{type:'json'});
@@ -136,6 +172,8 @@ export default async()=>{
         const dropCandidate=Number(reference?.price)>0
           && cur.price<=Number(reference.price)*(1-PRICE_DROP_ALERT_RATE);
 
+        if(targetCandidate || dropCandidate) run.candidateCount++;
+
         if(!targetCandidate && !dropCandidate){
           if(!baseline[toCity]) baseline[toCity]={...reference};
           continue;
@@ -145,6 +183,7 @@ export default async()=>{
         if(!row) continue;
 
         try{
+          run.freshVerifyCount++;
           const fresh=await searchMrt({
             dep:w.dep,
             arr:toCity,
@@ -205,6 +244,7 @@ export default async()=>{
             alertedAt:new Date().toISOString()
           };
         }catch(freshErr){
+          run.errorCount++;
           console.error('intl-flight-fresh-verify',w.id,toCity,freshErr);
         }
       }
@@ -222,6 +262,7 @@ export default async()=>{
       w.priceDropTracking=true;
       w.updatedAt=new Date().toISOString();
     }catch(e){
+      run.errorCount++;
       console.error('intl-flight-monitor',w.id,e);
       w.updatedAt=new Date().toISOString();
       w.lastError=String(e?.message||e);
@@ -235,6 +276,8 @@ export default async()=>{
     if(!groups.has(key)) groups.set(key,[]);
     groups.get(key).push(a);
   }
+
+  run.alertCount=groups.size;
 
   if(threadsAccessToken && pending.length){
     const threadsGroups=new Map();
@@ -275,7 +318,17 @@ export default async()=>{
         };
         threadsPosted=[item,...threadsPosted].slice(0,300);
         threadsPostedSet.add(key);
+        run.threadsCount++;
+        run.threadsPosts.push({
+          cityName:group[0].cityName||group[0].toCity,
+          toCity:group[0].toCity,
+          departureDate:group[0].departureDate,
+          returnDate:group[0].returnDate,
+          totalPrice:group[0].totalPrice,
+          type:group.some(x=>x.alertType==='target_reached')?'target_reached':'price_drop'
+        });
       }catch(e){
+        run.errorCount++;
         console.error('threads-auto-post',key,e?.code||'',e?.message||e);
       }
     }
@@ -302,6 +355,7 @@ export default async()=>{
         body:`${best.cityName||best.toCity} · ${best.departureDate}~${best.returnDate} · ${best.totalPrice.toLocaleString('ko-KR')}원${priceDrop}${conditionNote}`,
         url:'/intl-flight/'
       }));
+      run.pushCount++;
 
       newHistory.push({
         id:[detectedAt,best.toCity,best.departureDate,best.returnDate,best.totalPrice].join('|'),
@@ -330,6 +384,7 @@ export default async()=>{
         previousPrice:best.old?.price||null
       });
     }catch(pushErr){
+      run.errorCount++;
       const code=pushErr?.statusCode;
       if(code===404||code===410){
         for(const a of group) a.watch.enabled=false;
@@ -342,6 +397,11 @@ export default async()=>{
   await store.setJSON('watches',watches);
   await store.setJSON('recent-alerts',history);
   if(threadsAccessToken) await store.setJSON('threads-posted-events',threadsPosted);
+  await saveMonitorRun({
+    ...run,
+    status:run.errorCount?'partial_error':'ok',
+    finishedAt:new Date().toISOString()
+  });
 };
 
 export const config={schedule:'0 * * * *'};
