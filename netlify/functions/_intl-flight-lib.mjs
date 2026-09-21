@@ -85,11 +85,11 @@ export async function flightPartnerLink({dep,arr,departureDate,returnDate}) {
   return {url:mylink,partner:true,cached:false,mylinkId:mylinkResponse?.data?.mylinkId||null,landingUrl};
 }
 
-export async function searchMrt({ dep, arr, start, end, period }) {
+export async function searchMrt({ dep, arr, start, end, period, forceFresh=false }) {
   dep=cleanAirport(dep); arr=cleanAirport(arr); start=validateDate(start); end=validateDate(end); period=validatePeriod(period);
   const cacheKey=['route',dep,arr,start,end,period].join(':');
   const cached=await cacheStore.get(cacheKey,{type:'json'});
-  if(cached?.at && Array.isArray(cached?.rows) && Date.now()-new Date(cached.at).getTime()<CACHE_MS) return {rows:cached.rows,cached:true,cachedAt:cached.at};
+  if(!forceFresh && cached?.at && Array.isArray(cached?.rows) && Date.now()-new Date(cached.at).getTime()<CACHE_MS) return {rows:cached.rows,cached:true,cachedAt:cached.at};
 
   const j=await post('/v1/products/flight/calendar',{depCityCd:dep,arrCityCd:arr,period,startDate:start,endDate:end});
   const rows=(Array.isArray(j?.data)?j.data:[]).map(x=>({
