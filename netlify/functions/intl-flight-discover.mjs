@@ -5,16 +5,17 @@ export default async (req)=>{
     const u=new URL(req.url);
     const dep=u.searchParams.get('dep')||'ICN';
     const period=Number(u.searchParams.get('period')||5);
-    const region=u.searchParams.get('region')||'all';
+    const region=u.searchParams.has('region')?u.searchParams.get('region'):'all';
+    const combineRegions=u.searchParams.get('combineRegions')==='1';
     const targetPrice=Number(u.searchParams.get('targetPrice')||300000);
     const departureDate=u.searchParams.get('departureDate');
     const countries=(u.searchParams.get('countries')||'').split(',').filter(Boolean);
     const airports=(u.searchParams.get('airports')||'').split(',').filter(Boolean);
 
-    const result=await discoverMrt({dep,period,region,targetPrice,departureDate,countries,airports});
+    const result=await discoverMrt({dep,period,region,targetPrice,departureDate,countries,airports,combineRegions});
 
     return Response.json({
-      dep,period,region,targetPrice,departureDate,countries,airports,
+      dep,period,region,combineRegions,targetPrice,departureDate,countries,airports,
       windowStart:result.windowStart,
       windowEnd:result.windowEnd,
       bulkCount:result.bulkCount,
