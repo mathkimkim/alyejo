@@ -230,8 +230,25 @@ function loadForms(){
 }
 
 function bookingUrl(f){const dep=String(f.fromCity||'ICN').toUpperCase(),arr=String(f.toCity||'').toUpperCase();const trip=encodeURIComponent('A.'+dep+'.A.'+arr+'.'+f.departureDate+'/A.'+arr+'.A.'+dep+'.'+f.returnDate);return 'https://air-web.myrealtrip.com/results?adult=1&tripType=ROUND_TRIP&trip='+trip}
-function renderTabs(){const tabs=['all',...lastWindow];$('dateTabs').innerHTML=tabs.map(v=>`<button type="button" data-date="${v}" class="${activeDate===v?'active':''}">${v==='all'?'전체':dateLabel(v)}${v==='all'?'':' · '+lastRows.filter(x=>x.departureDate===v).length}</button>`).join('');$('dateTabs').querySelectorAll('button').forEach(b=>b.onclick=()=>{activeDate=b.dataset.date;renderTabs();renderDiscover()})}
-function renderDiscover(){const rows=(activeDate==='all'?lastRows:lastRows.filter(x=>x.departureDate===activeDate)).slice().sort((a,b)=>a.totalPrice-b.totalPrice);$('discoverResults').innerHTML=rows.length?rows.map(f=>`<a class="fare" href="${bookingUrl(f)}" target="_blank" rel="noopener"><div class="top"><span>${esc(f.cityName||f.airportName||f.toCity)} <span class="country">${esc(f.countryName||f.countryCode||'')}</span></span><span class="price">${money(f.totalPrice)}</span></div><div class="small">${esc(f.departureDate)} → ${esc(f.returnDate)} · ${esc(f.toCity)} · ${esc(f.airportName||'')} · ${esc(f.period)}일</div><span class="book">실시간 항공권 확인 →</span></a>`).join(''):'<div class="empty">이 날짜에는 조건에 맞는 여행지가 없습니다.</div>'}
+function shortMoney(n){if(!n)return '-';const v=Number(n);return v>=10000?(v/10000).toFixed(v%10000?1:0)+'만':'₩'+v.toLocaleString('ko-KR')}
+function uniqueBest(rows){const map=new Map();for(const f of rows.slice().sort((a,b)=>a.totalPrice-b.totalPrice)){if(!map.has(f.toCity))map.set(f.toCity,f)}return [...map.values()]}
+function renderBest(){
+  const best=uniqueBest(lastRows).slice(0,3);
+  $('bestResults').innerHTML=best.length?'<div class="best-title">🔥 이번 검색 BEST 3</div><div class="bestgrid">'+best.map((f,i)=>`<a class="bestitem" href="${bookingUrl(f)}" target="_blank" rel="noopener"><span class="rank">${i+1}</span><span class="bestmain"><span class="bestname">${esc(f.cityName||f.airportName||f.toCity)} <span class="country">${esc(f.countryName||f.countryCode||'')}</span></span><span class="bestmeta">${esc(f.departureDate)} → ${esc(f.returnDate)} · ${esc(f.toCity)}</span></span><span class="bestprice">${money(f.totalPrice)}</span></a>`).join('')+'</div>':'';
+}
+function renderTabs(){
+  const tabs=['all',...lastWindow];
+  $('dateTabs').innerHTML=tabs.map(v=>{
+    if(v==='all')return `<button type="button" data-date="all" class="${activeDate==='all'?'active':''}">전체<small>${lastRows.length}건</small></button>`;
+    const rows=lastRows.filter(x=>x.departureDate===v),min=rows.length?Math.min(...rows.map(x=>x.totalPrice)):0;
+    return `<button type="button" data-date="${v}" class="${activeDate===v?'active':''}">${dateLabel(v)}<small>${rows.length?rows.length+'곳 · '+shortMoney(min)+'~':'없음'}</small></button>`;
+  }).join('');
+  $('dateTabs').querySelectorAll('button').forEach(b=>b.onclick=()=>{activeDate=b.dataset.date;renderTabs();renderDiscover()});
+}
+function renderDiscover(){
+  const rows=(activeDate==='all'?lastRows:lastRows.filter(x=>x.departureDate===activeDate)).slice().sort((a,b)=>a.totalPrice-b.totalPrice);
+  $('discoverResults').innerHTML=rows.length?rows.map(f=>`<a class="fare" href="${bookingUrl(f)}" target="_blank" rel="noopener"><div class="top"><span>${esc(f.cityName||f.airportName||f.toCity)} <span class="country">${esc(f.countryName||f.countryCode||'')}</span></span><span class="price">${money(f.totalPrice)} 〉</span></div><div class="small">${esc(f.departureDate)} → ${esc(f.returnDate)} · ${esc(f.toCity)} · ${esc(f.period)}일</div></a>`).join(''):'<div class="empty">이 날짜에는 조건에 맞는 여행지가 없습니다.</div>';
+}
 function renderRoute(rows){$('routeResults').innerHTML=rows.length?rows.map(f=>`<a class="fare" href="${bookingUrl(f)}" target="_blank" rel="noopener"><div class="top"><span>${esc(f.departureDate)} → ${esc(f.returnDate)}</span><span class="price">${money(f.totalPrice)}</span></div><div class="small">${esc(f.airline||'항공사 미표시')} · ${esc(f.period)}일</div><span class="book">실시간 항공권 확인 →</span></a>`).join(''):'조회된 최저가 데이터가 없습니다.'}
 
 async function doDiscover(){
@@ -240,7 +257,7 @@ async function doDiscover(){
   const r=await fetch('/api/intl-flight-discover?'+qs),j=await r.json();
   if(!r.ok){$('state').innerHTML='<span class="warn">'+esc(j.error||'조회 실패')+'</span>';return}
   lastRows=j.destinations||[];lastWindow=[];for(let i=0;i<5;i++)lastWindow.push(dateAdd(j.windowStart,i));
-  activeDate='all';renderTabs();renderDiscover();
+  activeDate='all';renderBest();renderTabs();renderDiscover();
   $('state').innerHTML=`<span class="ok">조회 완료</span> · ${j.windowStart}~${j.windowEnd} · 결과 ${j.count}건<br><span class="muted">공항 ${j.resolvedAirportCount||0}곳 조회 · 성공 ${j.successCount||0} · 실패 ${j.failedCount||0}</span>`;
 }
 async function doRoute(){saveForms();const p=routeParams();$('routeState').textContent='조회 중입니다…';const qs=new URLSearchParams({dep:p.dep,arr:p.arr,start:p.start,end:p.end,period:String(p.period)});const r=await fetch('/api/intl-flight-search?'+qs),j=await r.json();if(!r.ok){$('routeState').innerHTML='<span class="warn">'+esc(j.error||'조회 실패')+'</span>';return}$('routeState').innerHTML=`<span class="ok">조회 완료</span> · ${j.count}건`;renderRoute(j.fares)}
