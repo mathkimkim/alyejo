@@ -41,8 +41,15 @@ function originName(code){
 function bookingUrl(a){
   const dep=String(a.watch?.dep||a.fromCity||'ICN').toUpperCase();
   const arr=String(a.toCity||'').toUpperCase();
-  const trip=encodeURIComponent('A.'+dep+'.A.'+arr+'.'+a.departureDate+'/A.'+arr+'.A.'+dep+'.'+a.returnDate);
-  return 'https://air-web.myrealtrip.com/results?adult=1&tripType=ROUND_TRIP&trip='+trip;
+  const base=(Netlify.env.get('URL')||'https://alryeok-behavior-mvp.netlify.app').replace(/\/$/,'');
+  const q=new URLSearchParams({
+    dep,
+    arr,
+    departureDate:a.departureDate,
+    returnDate:a.returnDate,
+    source:'threads'
+  });
+  return base+'/api/intl-flight-book?'+q.toString();
 }
 
 function threadsText(group){
