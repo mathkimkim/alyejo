@@ -207,7 +207,7 @@ function renderAirports(){
       const codes=new Set(list.map(x=>x.airportCode));
       selectedAirports=selectedAirports.filter(x=>!codes.has(x));
     }
-    renderAirports();renderSelected();saveForms();updateSummary();
+    renderDestinationPicker();saveForms();updateSummary();
   };
   renderAirportButtons();
 }
@@ -221,7 +221,7 @@ function renderAirportButtons(){
     selectedContinents=selectedContinents.filter(x=>x!==focusedContinent);
     selectedCountries=selectedCountries.filter(x=>x!==focusedCountry);
     if(selectedAirports.includes(code)) selectedAirports=selectedAirports.filter(x=>x!==code); else selectedAirports.push(code);
-    renderAirports();renderSelected();saveForms();updateSummary();
+    renderDestinationPicker();saveForms();updateSummary();
   });
 }
 function renderSelected(){
