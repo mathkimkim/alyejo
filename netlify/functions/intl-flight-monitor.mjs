@@ -1,8 +1,9 @@
 import { getStore } from '@netlify/blobs';
 import webpush from 'web-push';
-import { discoverMrt, trackMrt, flightPartnerLink } from './_intl-flight-lib.mjs';
+import { discoverMrt, trackMrt, searchMrt, flightPartnerLink } from './_intl-flight-lib.mjs';
 
 const store=getStore({name:'intl-flight-alert',consistency:'strong'});
+const PRICE_DROP_ALERT_RATE=0.10;
 
 function bestMap(rows){
   const out={};
@@ -123,34 +124,98 @@ export default async()=>{
       const mergedRows=[...tracking.rows,...result.rows];
       const previous=w.bestByDestination||{};
       const current=bestMap(mergedRows);
+      const baseline={...(w.alertBaselineByDestination||{})};
 
       for(const [toCity,cur] of Object.entries(current)){
         const old=previous[toCity];
-        let type=null;
+        const reference=baseline[toCity]||old||cur;
+        const targetPrice=Number(w.targetPrice);
+        const targetCandidate=!old
+          ? cur.price<=targetPrice
+          : Number(old.price)>targetPrice && cur.price<=targetPrice;
+        const dropCandidate=Number(reference?.price)>0
+          && cur.price<=Number(reference.price)*(1-PRICE_DROP_ALERT_RATE);
 
-        if(!old){
-          if(cur.price<=Number(w.targetPrice)) type='target_reached';
-        }else if(cur.price<Number(old.price||0)){
-          type=(Number(old.price)>Number(w.targetPrice) && cur.price<=Number(w.targetPrice))
-            ? 'target_reached'
-            : 'price_drop';
+        if(!targetCandidate && !dropCandidate){
+          if(!baseline[toCity]) baseline[toCity]={...reference};
+          continue;
         }
 
-        if(type){
-          const row=mergedRows.find(x=>x.toCity===toCity && x.key===cur.key);
-          if(row){
-            pending.push({
-              ...row,
-              old,
-              alertType:type,
-              watch:w,
-              subscription:w.subscription,
-              conditionLabel:`${w.departureDate} ±2일 · ${w.destinationLabel||regionLabel(w.region)} · 목표 ${Number(w.targetPrice).toLocaleString('ko-KR')}원`
-            });
-          }
+        const row=mergedRows.find(x=>x.toCity===toCity && x.key===cur.key);
+        if(!row) continue;
+
+        try{
+          const fresh=await searchMrt({
+            dep:w.dep,
+            arr:toCity,
+            start:row.departureDate,
+            end:row.departureDate,
+            period:w.period,
+            forceFresh:true
+          });
+          const freshRow=fresh.rows
+            .filter(x=>x.departureDate===row.departureDate && x.returnDate===row.returnDate && Number(x.totalPrice)>0)
+            .sort((a,b)=>Number(a.totalPrice)-Number(b.totalPrice))[0];
+          if(!freshRow) continue;
+
+          const freshPrice=Number(freshRow.totalPrice);
+          current[toCity]={
+            price:freshPrice,
+            key:freshRow.key,
+            departureDate:freshRow.departureDate,
+            returnDate:freshRow.returnDate,
+            cityName:row.cityName||cur.cityName||toCity
+          };
+
+          const targetHit=!old
+            ? freshPrice<=targetPrice
+            : Number(old.price)>targetPrice && freshPrice<=targetPrice;
+          const dropHit=Number(reference?.price)>0
+            && freshPrice<=Number(reference.price)*(1-PRICE_DROP_ALERT_RATE);
+
+          if(!targetHit && !dropHit) continue;
+
+          const type=targetHit?'target_reached':'price_drop';
+          const referencePrice=Number(reference?.price||old?.price||0);
+          const dropPercent=referencePrice>freshPrice
+            ? Math.round(((referencePrice-freshPrice)/referencePrice)*1000)/10
+            : 0;
+
+          pending.push({
+            ...row,
+            ...freshRow,
+            cityName:row.cityName||cur.cityName||toCity,
+            airportName:row.airportName||'',
+            countryName:row.countryName||'',
+            old:referencePrice>0?{...reference,price:referencePrice}:old,
+            alertType:type,
+            dropPercent,
+            freshVerified:true,
+            watch:w,
+            subscription:w.subscription,
+            conditionLabel:`${w.departureDate} ±2일 · ${w.destinationLabel||regionLabel(w.region)} · 목표 ${targetPrice.toLocaleString('ko-KR')}원`
+          });
+
+          baseline[toCity]={
+            price:freshPrice,
+            key:freshRow.key,
+            departureDate:freshRow.departureDate,
+            returnDate:freshRow.returnDate,
+            cityName:row.cityName||cur.cityName||toCity,
+            alertedAt:new Date().toISOString()
+          };
+        }catch(freshErr){
+          console.error('intl-flight-fresh-verify',w.id,toCity,freshErr);
         }
       }
 
+      for(const [toCity,cur] of Object.entries(current)){
+        if(!baseline[toCity]) baseline[toCity]={...cur};
+      }
+
+      w.alertBaselineByDestination=baseline;
+      w.priceDropThresholdPercent=10;
+      w.freshVerifyBeforeAlert=true;
       w.bestByDestination=current;
       w.lastFares=result.rows;
       w.trackedAirportCount=tracking.trackedAirportCount;
