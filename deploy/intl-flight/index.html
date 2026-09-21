@@ -141,14 +141,16 @@ function destinationLabel(){
     const a=airportCatalog.find(x=>x.airportCode===code);
     labels.push(a?code+' · '+(a.cityName||a.airportName):code);
   });
-  return labels.length?labels.join(' · '):'지원 지역 전체';
+  return labels.length?labels.join(' · '):(continentNames[focusedContinent]||focusedContinent)+' 전체';
 }
 function discoverParams(){
+  const explicit=selectedCountries.length>0||selectedAirports.length>0;
   return{
     dep:$('dDep').value.trim().toUpperCase(),
     departureDate:$('dDepartureDate').value,
     period:+$('dPeriod').value,
-    region:supportedRegions,
+    region:explicit?supportedRegions:focusedContinent,
+    focusedContinent,
     countries:[...selectedCountries],
     airports:[...selectedAirports],
     destinationLabel:destinationLabel(),
@@ -161,7 +163,7 @@ function updateSummary(){const p=discoverParams();$('conditionSummary').innerHTM
 
 function renderContinents(){
   $('continentButtons').innerHTML=continents.map(([k,label])=>`<button type="button" class="chip ${focusedContinent===k?'active':''}" data-continent="${k}">${label}</button>`).join('');
-  $('continentButtons').querySelectorAll('button').forEach(b=>b.onclick=()=>{focusedContinent=b.dataset.continent;focusedCountry='';renderDestinationPicker()});
+  $('continentButtons').querySelectorAll('button').forEach(b=>b.onclick=()=>{focusedContinent=b.dataset.continent;focusedCountry='';renderDestinationPicker();saveForms();updateSummary()});
 }
 function countryListForContinent(key){
   const map=new Map();
@@ -213,7 +215,7 @@ function renderSelected(){
   const items=[];
   selectedCountries.forEach(cc=>items.push({key:'c:'+cc,label:(countryMeta(cc).name||cc)+' 전체'}));
   selectedAirports.forEach(code=>{const a=airportCatalog.find(x=>x.airportCode===code);items.push({key:'a:'+code,label:a?code+' · '+(a.cityName||a.airportName):code})});
-  $('selectedDestinations').innerHTML=items.length?items.map(x=>`<span class="tagchip" data-remove="${x.key}">${esc(x.label)} ×</span>`).join(''):'<span class="muted">지원 지역 전체</span>';
+  $('selectedDestinations').innerHTML=items.length?items.map(x=>`<span class="tagchip" data-remove="${x.key}">${esc(x.label)} ×</span>`).join(''):`<span class="tagchip">${esc((continentNames[focusedContinent]||focusedContinent)+' 전체')}</span>`;
   $('selectedDestinations').querySelectorAll('[data-remove]').forEach(el=>el.onclick=()=>{
     const [type,val]=el.dataset.remove.split(':');
     if(type==='c')selectedCountries=selectedCountries.filter(x=>x!==val);else selectedAirports=selectedAirports.filter(x=>x!==val);
@@ -238,6 +240,8 @@ function loadForms(){
   $('dDep').value=d.dep||'ICN';$('dDepartureDate').value=d.departureDate||iso(base);$('dPeriod').value=String(d.period||5);$('dTarget').value=String(d.targetPrice||300000);
   selectedCountries=Array.isArray(d.countries)?d.countries:[];
   selectedAirports=Array.isArray(d.airports)?d.airports:[];
+  if(d.focusedContinent&&continents.some(x=>x[0]===d.focusedContinent)) focusedContinent=d.focusedContinent;
+  else if(!selectedCountries.length&&!selectedAirports.length&&d.region&&continents.some(x=>x[0]===d.region)) focusedContinent=d.region;
   $('rDep').value=r.dep||'ICN';$('rArr').value=r.arr||'NRT';$('rStart').value=r.start||iso(base);$('rEnd').value=r.end||iso(end);$('rPeriod').value=String(r.period||5);
   updateSummary();
 }
