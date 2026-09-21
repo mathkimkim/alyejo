@@ -43,6 +43,48 @@ async function post(path, body) {
   return j;
 }
 
+export async function flightPartnerLink({dep,arr,departureDate,returnDate}) {
+  dep=cleanAirport(dep);
+  arr=cleanAirport(arr);
+  departureDate=validateDate(departureDate);
+  returnDate=validateDate(returnDate);
+  if(returnDate<departureDate) throw new Error('귀국일은 출발일 이후여야 합니다.');
+
+  const cacheKey=['partner-flight-link-v1',dep,arr,departureDate,returnDate].join(':');
+  const cached=await cacheStore.get(cacheKey,{type:'json'});
+  if(cached?.mylink) return {url:cached.mylink,partner:true,cached:true,landingUrl:cached.landingUrl||''};
+
+  const landingResponse=await post('/v1/products/flight/fare-query-landing-url',{
+    depAirportCd:dep,
+    arrAirportCd:arr,
+    tripTypeCd:'RT',
+    depDate:departureDate,
+    arrDate:returnDate,
+    adult:1,
+    cabinClass:'ECONOMY'
+  });
+
+  const landingUrl=typeof landingResponse?.data==='string'
+    ? landingResponse.data
+    : (landingResponse?.data?.url||landingResponse?.data?.landingUrl||'');
+  if(!landingUrl || !/^https:\/\/([a-z0-9-]+\.)*myrealtrip\.com\//i.test(landingUrl)){
+    throw new Error('항공 운임 조회 랜딩 URL을 생성하지 못했습니다.');
+  }
+
+  const mylinkResponse=await post('/v1/mylink',{targetUrl:landingUrl});
+  const mylink=mylinkResponse?.data?.mylink||'';
+  if(!mylink) throw new Error('마이링크를 생성하지 못했습니다.');
+
+  await cacheStore.setJSON(cacheKey,{
+    at:new Date().toISOString(),
+    mylink,
+    mylinkId:mylinkResponse?.data?.mylinkId||null,
+    landingUrl
+  });
+
+  return {url:mylink,partner:true,cached:false,landingUrl};
+}
+
 export async function searchMrt({ dep, arr, start, end, period }) {
   dep=cleanAirport(dep); arr=cleanAirport(arr); start=validateDate(start); end=validateDate(end); period=validatePeriod(period);
   const cacheKey=['route',dep,arr,start,end,period].join(':');
