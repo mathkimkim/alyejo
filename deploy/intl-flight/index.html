@@ -101,6 +101,15 @@
   </details>
 </section>
 
+<section class="card">
+  <details class="advanced">
+    <summary>관리자 · Threads 연결 테스트</summary>
+    <p class="muted">관리자 테스트 키를 입력하면 flyticket_alert 계정에 테스트 글 1건을 게시합니다.</p>
+    <button id="threadsTest" class="action secondary" style="width:100%">Threads 테스트 게시</button>
+    <div id="threadsTestState" class="status">아직 테스트하지 않았습니다.</div>
+  </details>
+</section>
+
 <section class="card"><div class="note">마이리얼트립 API의 가격은 참고 최저가이며 실제 판매가는 예약 화면에서 달라질 수 있습니다. 결과를 누르면 같은 날짜·노선의 마이리얼트립 실시간 항공권 검색으로 이동합니다. 푸시 알림은 앱을 닫아도 1시간마다 감시합니다.</div></section>
 </main>
 
@@ -351,6 +360,20 @@ $('discover').onclick=()=>doDiscover().catch(e=>$('state').textContent=e.message
 $('routeSearch').onclick=()=>doRoute().catch(e=>$('routeState').textContent=e.message);
 $('watch').onclick=async()=>{try{saveForms();updateSummary();const p=discoverParams();$('state').textContent='푸시 알림을 등록 중입니다…';const subscription=await subscribe();const r=await fetch('/api/intl-flight-watch',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({...p,subscription})}),j=await r.json();if(!r.ok)throw Error(j.error||'등록 실패');$('state').innerHTML=`<span class="ok">🔔 알림 등록 완료</span><br>${esc(p.departureDate)} ±2일 · ${esc(p.destinationLabel)} · 목표 ${money(p.targetPrice)} · 목표가 도달 + 가격 하락 감시`;await loadWatches();await doDiscover()}catch(e){$('state').innerHTML='<span class="warn">'+esc(e.message)+'</span>'}};
 $('stop').onclick=async()=>{const r=await fetch('/api/intl-flight-watch',{method:'DELETE'}),j=await r.json();if(r.ok){renderWatchList(j.watches||[]);$('state').textContent='모든 알림을 껐습니다.'}};
+$('threadsTest').onclick=async()=>{
+  const key=prompt('Netlify의 THREADS_TEST_KEY 값을 입력하세요.');
+  if(!key)return;
+  $('threadsTestState').textContent='Threads에 테스트 글을 게시 중입니다…';
+  try{
+    const r=await fetch('/api/threads-test-post',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({key})});
+    const j=await r.json();
+    if(!r.ok)throw Error(j.error||'Threads 게시 실패');
+    $('threadsTestState').innerHTML='<span class="ok">게시 성공</span> · flyticket_alert 계정을 확인하세요.';
+  }catch(e){
+    $('threadsTestState').innerHTML='<span class="warn">'+esc(e.message)+'</span>';
+  }
+};
+
 
 loadForms();
 loadAirportCatalog().then(()=>loadWatches()).catch(e=>{$('state').innerHTML='<span class="warn">'+esc(e.message)+'</span>'});
