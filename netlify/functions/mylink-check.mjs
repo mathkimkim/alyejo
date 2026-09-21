@@ -13,6 +13,7 @@ export default async(req)=>{
       ok:true,
       test:'ICN → FUK / 2026-09-25 → 2026-09-28',
       partnerLink:result.url,
+      mylinkId:result.mylinkId||null,
       partner:true,
       cached:result.cached,
       landingUrl:result.landingUrl||''
