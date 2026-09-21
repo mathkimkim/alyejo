@@ -12,11 +12,6 @@ function cleanDate(v){
   return s;
 }
 
-function fallbackUrl(dep,arr,departureDate,returnDate){
-  const trip=encodeURIComponent('A.'+dep+'.A.'+arr+'.'+departureDate+'/A.'+arr+'.A.'+dep+'.'+returnDate);
-  return 'https://air-web.myrealtrip.com/results?adult=1&tripType=ROUND_TRIP&trip='+trip;
-}
-
 export default async(req)=>{
   try{
     if(req.method!=='GET') return new Response('Method Not Allowed',{status:405});
@@ -28,10 +23,14 @@ export default async(req)=>{
 
     try{
       const partner=await flightPartnerLink({dep,arr,departureDate,returnDate});
+      if(!partner?.partner || !partner?.url) throw new Error('파트너 마이링크 생성 실패');
       return Response.redirect(partner.url,302);
     }catch(e){
       console.error('intl-flight-partner-link',dep,arr,departureDate,returnDate,e?.message||e);
-      return Response.redirect(fallbackUrl(dep,arr,departureDate,returnDate),302);
+      return new Response(
+        '<!doctype html><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>항공권 링크 생성 실패</title><body style="font-family:system-ui;padding:32px;background:#071827;color:#fff"><h2>파트너 항공권 링크를 만들지 못했습니다.</h2><p>일반 링크로 우회하지 않았습니다. 잠시 후 다시 눌러주세요.</p></body>',
+        {status:502,headers:{'Content-Type':'text/html; charset=utf-8'}}
+      );
     }
   }catch(e){
     return Response.json({error:String(e?.message||e)},{status:400});
