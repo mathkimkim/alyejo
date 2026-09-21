@@ -18,7 +18,7 @@
 </style></head><body><main class="app">
 <div class="ey">알려줘 · 해외 특가 알림</div>
 <h1>날짜와 예산만 정해두세요.<br>조건에 맞으면 알려드려요.</h1>
-<p class="lead">기준 출발일 앞뒤 2일을 비교하고, 원하는 지역의 왕복 항공권이 목표가격 이하로 나오면 알려드립니다.</p>
+<p class="lead">기준 출발일 앞뒤 2일을 비교하고, 목표가격 이하가 되거나 마지막 알림 기준 최저가가 10% 이상 내려가면 알려드립니다.</p>
 
 <section class="card hero">
   <div class="stephead"><span class="step">1</span><h2>여행 조건</h2></div>
@@ -286,7 +286,7 @@ function renderWatchList(watches){
   const list=Array.isArray(watches)?watches:[];
   $('watchCount').textContent='('+list.length+'/10)';
   if(!list.length){$('watchList').innerHTML='<div class="muted">아직 등록된 알림이 없습니다.</div>';return}
-  $('watchList').innerHTML=list.map(w=>`<div class="watchcard"><div class="watchrow"><div><div class="watchtitle">${esc(w.departureDate)} ±2일 · ${esc(watchDestinationText(w))}</div><div class="watchmeta">${esc(w.dep)} 출발 · ${esc(w.period)}일 일정 · 왕복 ${money(w.targetPrice)} 목표 · 목표가 도달 + 최저가 하락 알림<br>1시간마다 감시</div></div><span class="watchstate ${w.enabled?'on':'off'}">${w.enabled?'ON':'OFF'}</span></div><div class="watchactions"><button data-toggle="${esc(w.id)}" data-enabled="${w.enabled?'0':'1'}">${w.enabled?'끄기':'다시 켜기'}</button><button class="delete" data-delete="${esc(w.id)}">삭제</button></div></div>`).join('');
+  $('watchList').innerHTML=list.map(w=>`<div class="watchcard"><div class="watchrow"><div><div class="watchtitle">${esc(w.departureDate)} ±2일 · ${esc(watchDestinationText(w))}</div><div class="watchmeta">${esc(w.dep)} 출발 · ${esc(w.period)}일 일정 · 왕복 ${money(w.targetPrice)} 목표 · 목표가 도달 + 최저가 10% 이상 하락 알림<br>알림 직전 최신 가격 재확인 · 1시간마다 감시</div></div><span class="watchstate ${w.enabled?'on':'off'}">${w.enabled?'ON':'OFF'}</span></div><div class="watchactions"><button data-toggle="${esc(w.id)}" data-enabled="${w.enabled?'0':'1'}">${w.enabled?'끄기':'다시 켜기'}</button><button class="delete" data-delete="${esc(w.id)}">삭제</button></div></div>`).join('');
   $('watchList').querySelectorAll('[data-toggle]').forEach(b=>b.onclick=()=>toggleWatch(b.dataset.toggle,b.dataset.enabled==='1'));
   $('watchList').querySelectorAll('[data-delete]').forEach(b=>b.onclick=()=>deleteWatch(b.dataset.delete));
 }
@@ -358,7 +358,7 @@ $('airportSearch').addEventListener('input',renderAirportButtons);
 ['dDep','dDepartureDate','dPeriod','dTarget','rDep','rArr','rStart','rEnd','rPeriod'].forEach(id=>$(id).addEventListener('change',()=>{saveForms();if(id.startsWith('d'))updateSummary();if(id==='dDep'||id==='dPeriod'){loadAirportCatalog().catch(e=>{$('state').innerHTML='<span class="warn">'+esc(e.message)+'</span>'})}}));
 $('discover').onclick=()=>doDiscover().catch(e=>$('state').textContent=e.message);
 $('routeSearch').onclick=()=>doRoute().catch(e=>$('routeState').textContent=e.message);
-$('watch').onclick=async()=>{try{saveForms();updateSummary();const p=discoverParams();$('state').textContent='푸시 알림을 등록 중입니다…';const subscription=await subscribe();const r=await fetch('/api/intl-flight-watch',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({...p,subscription})}),j=await r.json();if(!r.ok)throw Error(j.error||'등록 실패');$('state').innerHTML=`<span class="ok">🔔 알림 등록 완료</span><br>${esc(p.departureDate)} ±2일 · ${esc(p.destinationLabel)} · 목표 ${money(p.targetPrice)} · 목표가 도달 + 가격 하락 감시`;await loadWatches();await doDiscover()}catch(e){$('state').innerHTML='<span class="warn">'+esc(e.message)+'</span>'}};
+$('watch').onclick=async()=>{try{saveForms();updateSummary();const p=discoverParams();$('state').textContent='푸시 알림을 등록 중입니다…';const subscription=await subscribe();const r=await fetch('/api/intl-flight-watch',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({...p,subscription})}),j=await r.json();if(!r.ok)throw Error(j.error||'등록 실패');$('state').innerHTML=`<span class="ok">🔔 알림 등록 완료</span><br>${esc(p.departureDate)} ±2일 · ${esc(p.destinationLabel)} · 목표 ${money(p.targetPrice)} · 목표가 도달 + 최저가 10% 이상 하락 감시`;await loadWatches();await doDiscover()}catch(e){$('state').innerHTML='<span class="warn">'+esc(e.message)+'</span>'}};
 $('stop').onclick=async()=>{const r=await fetch('/api/intl-flight-watch',{method:'DELETE'}),j=await r.json();if(r.ok){renderWatchList(j.watches||[]);$('state').textContent='모든 알림을 껐습니다.'}};
 $('threadsTest').onclick=async()=>{
   const key=prompt('Netlify의 THREADS_TEST_KEY 값을 입력하세요.');
