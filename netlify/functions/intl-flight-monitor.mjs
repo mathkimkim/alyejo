@@ -1,6 +1,6 @@
 import { getStore } from '@netlify/blobs';
 import webpush from 'web-push';
-import { discoverMrt, trackMrt } from './_intl-flight-lib.mjs';
+import { discoverMrt, trackMrt, flightPartnerLink } from './_intl-flight-lib.mjs';
 
 const store=getStore({name:'intl-flight-alert',consistency:'strong'});
 
@@ -38,21 +38,7 @@ function originName(code){
   return map[code]||code;
 }
 
-function bookingUrl(a){
-  const dep=String(a.watch?.dep||a.fromCity||'ICN').toUpperCase();
-  const arr=String(a.toCity||'').toUpperCase();
-  const base=(Netlify.env.get('URL')||'https://alryeok-behavior-mvp.netlify.app').replace(/\/$/,'');
-  const q=new URLSearchParams({
-    dep,
-    arr,
-    departureDate:a.departureDate,
-    returnDate:a.returnDate,
-    source:'threads'
-  });
-  return base+'/api/intl-flight-book?'+q.toString();
-}
-
-function threadsText(group){
+function threadsText(group,partnerUrl){
   const best=group[0];
   const targetHit=group.some(x=>x.alertType==='target_reached');
   const title=targetHit
@@ -74,15 +60,16 @@ function threadsText(group){
     '📅 '+best.departureDate+' → '+best.returnDate,
     '',
     '실시간 항공권 확인 ↓',
-    bookingUrl(best)
+    partnerUrl
   ].join('\n');
 }
 
-async function postThreads(text,accessToken){
+async function postThreads(text,accessToken,linkAttachment){
   const params=new URLSearchParams({
     media_type:'TEXT',
     text,
-    auto_publish_text:'true'
+    auto_publish_text:'true',
+    link_attachment:linkAttachment
   });
   const response=await fetch('https://graph.threads.net/v1.0/me/threads',{
     method:'POST',
@@ -195,10 +182,26 @@ export default async()=>{
     for(const [key,group] of threadsGroups){
       if(threadsPostedSet.has(key)) continue;
       try{
-        const result=await postThreads(threadsText(group),threadsAccessToken);
+        const best=group[0];
+        const dep=String(best.watch?.dep||best.fromCity||'ICN').toUpperCase();
+        const partner=await flightPartnerLink({
+          dep,
+          arr:String(best.toCity||'').toUpperCase(),
+          departureDate:best.departureDate,
+          returnDate:best.returnDate
+        });
+        if(!partner?.partner || !partner?.url) throw new Error('Threads용 파트너 마이링크 생성 실패');
+
+        const result=await postThreads(
+          threadsText(group,partner.url),
+          threadsAccessToken,
+          partner.url
+        );
         const item={
           key,
           id:result?.id||null,
+          mylinkId:partner.mylinkId||null,
+          partnerUrl:partner.url,
           postedAt:new Date().toISOString(),
           toCity:group[0].toCity,
           departureDate:group[0].departureDate,
