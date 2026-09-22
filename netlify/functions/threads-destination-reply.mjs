@@ -285,6 +285,16 @@ export default async()=>{
   let queue=await store.get('threads-reply-queue',{type:'json'});
   queue=Array.isArray(queue)?queue:[];
 
+  // 이전 배포에서 남은 대기 작업이 중복 답글을 만들지 않도록 모두 폐기합니다.
+  const CURRENT_REPLY_VERSION=4;
+  for(const item of queue){
+    if(item.status==='pending' && Number(item.replyVersion||0)!==CURRENT_REPLY_VERSION){
+      item.status='cancelled_legacy';
+      item.cancelledAt=new Date().toISOString();
+      item.cancelReason='legacy_reply_queue';
+    }
+  }
+
   // 원글당 1차·2차 답글을 각각 한 번만 게시합니다.
   const byRoot=new Map();
   for(const item of queue){
@@ -311,7 +321,7 @@ export default async()=>{
   }
 
   const now=Date.now();
-  const due=queue.filter(x=>x.status==='pending' && new Date(x.dueAt).getTime()<=now).slice(0,10);
+  const due=queue.filter(x=>x.status==='pending' && Number(x.replyVersion||0)===CURRENT_REPLY_VERSION && new Date(x.dueAt).getTime()<=now).slice(0,10);
   const reserved=new Set();
 
   for(const item of due){
@@ -332,7 +342,7 @@ export default async()=>{
 
     let replyToId=item.rootPostId;
     if(stage===2){
-      const first=state.stage1||queue.find(x=>x.rootPostId===item.rootPostId && Number(x.stage||1)===1 && x.status==='posted' && x.replyPostId);
+      const first=state.stage1||queue.find(x=>x.rootPostId===item.rootPostId && Number(x.replyVersion||0)===CURRENT_REPLY_VERSION && Number(x.stage||1)===1 && x.status==='posted' && x.replyPostId);
       if(!first?.replyPostId){
         item.dueAt=new Date(Date.now()+5*60*1000).toISOString();
         continue;
@@ -362,7 +372,7 @@ export default async()=>{
   }
 
   const cutoff=Date.now()-7*24*60*60*1000;
-  queue=queue.filter(x=>x.status==='pending'||new Date(x.postedAt||x.skippedAt||x.queuedAt||0).getTime()>=cutoff).slice(-300);
+  queue=queue.filter(x=>x.status==='pending'||new Date(x.postedAt||x.skippedAt||x.cancelledAt||x.queuedAt||0).getTime()>=cutoff).slice(-300);
   await store.setJSON('threads-reply-queue',queue);
 };
 
