@@ -50,28 +50,93 @@ function originName(code){
   return map[code]||code;
 }
 
+function threadHash(s){
+  let h=0;
+  for(const ch of String(s||'')) h=((h<<5)-h+ch.charCodeAt(0))|0;
+  return Math.abs(h);
+}
+
+function tripDays(a){
+  const s=new Date(a.departureDate+'T00:00:00Z');
+  const e=new Date(a.returnDate+'T00:00:00Z');
+  return Math.max(1,Math.round((e-s)/86400000)+1);
+}
+
+function priceBand(price){
+  const man=Math.floor(Number(price)/10000);
+  return man+'만원대';
+}
+
 function threadsText(group,partnerUrl){
   const best=group[0];
+  const city=best.cityName||best.toCity;
+  const country=best.countryName||'';
   const targetHit=group.some(x=>x.alertType==='target_reached');
-  const title=targetHit
-    ? '🎯 '+(best.cityName||best.toCity)+' 왕복 목표가 도달'
-    : '📉 '+(best.cityName||best.toCity)+' 왕복 최저가 하락';
   const dep=String(best.watch?.dep||best.fromCity||'ICN').toUpperCase();
-  const oldPrices=group.map(x=>Number(x.old?.price||0)).filter(x=>x>Number(best.totalPrice));
+  const price=Number(best.totalPrice);
+  const oldPrices=group.map(x=>Number(x.old?.price||0)).filter(x=>x>price);
   const oldPrice=oldPrices.length?Math.min(...oldPrices):0;
-  const diff=oldPrice?oldPrice-Number(best.totalPrice):0;
+  const diff=oldPrice?oldPrice-price:0;
+  const dropPct=oldPrice?Math.round((diff/oldPrice)*100):Math.round(Number(best.dropPercent||0));
+  const days=tripDays(best);
+  const seed=threadHash([best.toCity,best.departureDate,best.returnDate,price].join('|'));
+
+  let titles;
+  if(targetHit){
+    titles=[
+      '🎯 기다리던 가격 나왔어요! '+city+' 왕복 '+priceBand(price),
+      '🔥 '+city+' 왕복 '+priceBand(price)+' 떴어요',
+      '✈️ '+city+' 이 가격이면 눈에 들어오네요 · 왕복 '+priceBand(price),
+      '👀 '+city+' 목표가 아래로 내려왔어요 · 왕복 '+priceBand(price)
+    ];
+  }else if(dropPct>=30){
+    titles=[
+      '🚨 이건 많이 떨어졌는데요? '+city+' 왕복 '+priceBand(price),
+      '💥 '+city+' 항공권 가격 확 떨어졌어요 · '+priceBand(price),
+      '🔥 '+city+' 왕복 '+priceBand(price)+'까지 내려왔어요',
+      '👀 '+city+' 가격 이 정도면 진짜 눈에 띄네요 · '+priceBand(price)
+    ];
+  }else if(dropPct>=20){
+    titles=[
+      '🔥 '+city+' 항공권 꽤 내려왔어요 · 왕복 '+priceBand(price),
+      '👀 '+city+' 왕복 '+priceBand(price)+' 발견',
+      '✈️ '+city+' 가격 좋아졌네요 · 왕복 '+priceBand(price),
+      '📉 '+city+' 항공권 '+dropPct+'% 내려왔어요'
+    ];
+  }else{
+    titles=[
+      '👀 '+city+' 항공권 슬슬 괜찮은 가격 나왔어요',
+      '✈️ '+city+' 왕복 '+priceBand(price)+' 나왔어요',
+      '🔥 '+city+' 항공권 '+dropPct+'% 내려왔어요',
+      '📉 '+city+' 왕복 가격 또 내려왔습니다'
+    ];
+  }
+
+  const title=titles[seed%titles.length];
+  const reactions=[
+    dropPct>=30?'이 정도 하락폭이면 한 번 확인해볼 만하네요.':'가격이 의미 있게 내려왔어요.',
+    days<=4?days+'일 일정으로 짧게 다녀오기 좋은 조건이에요.':days+'일 일정 기준으로 잡힌 가격이에요.',
+    targetHit?'설정한 목표가격 아래로 내려왔습니다.':'이전 알림 기준보다 '+dropPct+'% 저렴해졌어요.'
+  ];
+  const reaction=reactions[(seed>>2)%reactions.length];
+
   const priceLine=oldPrice
-    ? oldPrice.toLocaleString('ko-KR')+'원 → '+Number(best.totalPrice).toLocaleString('ko-KR')+'원\n▼ '+diff.toLocaleString('ko-KR')+'원'
-    : Number(best.totalPrice).toLocaleString('ko-KR')+'원';
+    ? oldPrice.toLocaleString('ko-KR')+'원 → '+price.toLocaleString('ko-KR')+'원\n▼ '+diff.toLocaleString('ko-KR')+'원'+(dropPct?' · '+dropPct+'%↓':'')
+    : '왕복 '+price.toLocaleString('ko-KR')+'원';
+
+  const placeLine=country?'🌏 '+country+' · '+city:'🌏 '+city;
+
   return [
     title,
     '',
+    reaction,
     priceLine,
     '',
-    '✈️ '+originName(dep)+'('+dep+') → '+(best.cityName||best.toCity)+'('+best.toCity+')',
-    '📅 '+best.departureDate+' → '+best.returnDate,
+    '✈️ '+originName(dep)+'('+dep+') → '+city+'('+best.toCity+')',
+    '📅 '+best.departureDate+' → '+best.returnDate+' · '+days+'일',
+    placeLine,
     '',
-    '실시간 항공권 확인 ↓',
+    '지금 가격 확인 👇',
     partnerUrl
   ].join('\n');
 }
