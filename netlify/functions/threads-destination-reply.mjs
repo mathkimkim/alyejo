@@ -192,20 +192,69 @@ export default async()=>{
   let queue=await store.get('threads-reply-queue',{type:'json'});
   queue=Array.isArray(queue)?queue:[];
 
+  // Legacy queue entries had no stage. Treat them as stage 1, but allow only one
+  // stage-1 and one stage-2 reply per root post. This also prevents duplicate
+  // replies left over from deployments before the two-stage queue existed.
+  const byRoot=new Map();
+  for(const item of queue){
+    const root=String(item.rootPostId||'');
+    if(!root) continue;
+    if(!byRoot.has(root)) byRoot.set(root,{stage1Posted:null,stage2Posted:null});
+    const state=byRoot.get(root);
+    const stage=Number(item.stage||1);
+    if(item.status==='posted' && item.replyPostId){
+      if(stage===1 && !state.stage1Posted) state.stage1Posted=item;
+      if(stage===2 && !state.stage2Posted) state.stage2Posted=item;
+    }
+  }
+
+  // Mark already-redundant pending entries as skipped before selecting due work.
+  for(const item of queue){
+    if(item.status!=='pending') continue;
+    const state=byRoot.get(String(item.rootPostId||''))||{};
+    const stage=Number(item.stage||1);
+    if((stage===1 && state.stage1Posted) || (stage===2 && state.stage2Posted)){
+      item.status='skipped_duplicate';
+      item.skippedAt=new Date().toISOString();
+    }
+  }
+
   const now=Date.now();
   const due=queue.filter(x=>x.status==='pending' && new Date(x.dueAt).getTime()<=now).slice(0,10);
 
   for(const item of due){
     try{
+      const stage=Number(item.stage||1);
+      const root=String(item.rootPostId||'');
+      const state=byRoot.get(root)||{stage1Posted:null,stage2Posted:null};
+
+      if(stage===1 && state.stage1Posted){
+        item.status='skipped_duplicate';
+        item.skippedAt=new Date().toISOString();
+        continue;
+      }
+      if(stage===2 && state.stage2Posted){
+        item.status='skipped_duplicate';
+        item.skippedAt=new Date().toISOString();
+        continue;
+      }
+
       let replyToId=item.rootPostId;
-      if(Number(item.stage||1)===2){
-        const first=queue.find(x=>x.rootPostId===item.rootPostId && Number(x.stage||1)===1 && x.status==='posted' && x.replyPostId);
+      if(stage===2){
+        const first=state.stage1Posted||queue.find(x=>x.rootPostId===item.rootPostId && Number(x.stage||1)===1 && x.status==='posted' && x.replyPostId);
         if(first?.replyPostId) replyToId=first.replyPostId;
         else{
           item.dueAt=new Date(Date.now()+5*60*1000).toISOString();
           continue;
         }
       }
+
+      // Reserve this stage in memory before posting so a second legacy item in
+      // the same scheduled invocation cannot post the same content again.
+      if(stage===1) state.stage1Posted=item;
+      else state.stage2Posted=item;
+      byRoot.set(root,state);
+
       const result=await postReply(replyToId,replyText(item),accessToken);
       item.replyToId=replyToId;
       item.status='posted';
@@ -214,6 +263,12 @@ export default async()=>{
       item.attempts=Number(item.attempts||0)+1;
       item.lastError=null;
     }catch(e){
+      const state=byRoot.get(String(item.rootPostId||''));
+      const stage=Number(item.stage||1);
+      if(state){
+        if(stage===1 && state.stage1Posted===item) state.stage1Posted=null;
+        if(stage===2 && state.stage2Posted===item) state.stage2Posted=null;
+      }
       item.attempts=Number(item.attempts||0)+1;
       item.lastError=String(e?.message||e);
       item.lastTriedAt=new Date().toISOString();
@@ -222,7 +277,7 @@ export default async()=>{
   }
 
   const cutoff=Date.now()-7*24*60*60*1000;
-  queue=queue.filter(x=>x.status==='pending'||new Date(x.postedAt||x.queuedAt||0).getTime()>=cutoff).slice(-300);
+  queue=queue.filter(x=>x.status==='pending'||new Date(x.postedAt||x.skippedAt||x.queuedAt||0).getTime()>=cutoff).slice(-300);
   await store.setJSON('threads-reply-queue',queue);
 };
 
