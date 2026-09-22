@@ -331,8 +331,9 @@ async function toggleWatch(id,enabled){const r=await fetch('/api/intl-flight-wat
 async function deleteWatch(id){const r=await fetch('/api/intl-flight-watch?id='+encodeURIComponent(id),{method:'DELETE'}),j=await r.json();if(!r.ok)throw Error(j.error||'알림 삭제 실패');if(editingWatchId===id)cancelEditWatch();renderWatchList(j.watches||[])}
 
 function editContinentsFromWatch(w){
-  const regions=String(w.region||'').split(',').filter(k=>continents.some(x=>x[0]===k));
-  return regions;
+  const hasExplicit=(w.countries||[]).length>0||(w.airports||[]).length>0;
+  if(hasExplicit&&!w.combineRegions)return [];
+  return String(w.region||'').split(',').filter(k=>continents.some(x=>x[0]===k));
 }
 function startEditWatch(id){
   const w=watchListData.find(x=>x.id===id);
