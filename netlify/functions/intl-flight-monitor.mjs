@@ -412,12 +412,6 @@ export default async()=>{
             stage:1,
             dueAt:new Date(Date.now()+10*60*1000).toISOString()
           });
-          await queueThreadsReply({
-            ...replyBase,
-            id:'reply2_'+result.id,
-            stage:2,
-            dueAt:new Date(Date.now()+20*60*1000).toISOString()
-          });
         }
         run.threadsCount++;
         run.threadsPosts.push({
