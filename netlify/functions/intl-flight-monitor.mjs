@@ -40,7 +40,7 @@ async function saveMonitorRun(run){
 async function queueThreadsReply(item){
   let queue=await store.get('threads-reply-queue',{type:'json'});
   queue=Array.isArray(queue)?queue:[];
-  if(queue.some(x=>x.rootPostId===item.rootPostId)) return;
+  if(queue.some(x=>x.id===item.id)) return;
   queue.push(item);
   await store.setJSON('threads-reply-queue',queue.slice(-300));
 }
