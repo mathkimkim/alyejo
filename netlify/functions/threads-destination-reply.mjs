@@ -93,6 +93,125 @@ function guideFor(item){
   return {tip,guide};
 }
 
+const LIVE_META={
+  FUK:{lat:33.5902,lon:130.4017,currency:'JPY',countryCode:'JP',unit:100},
+  NRT:{lat:35.6762,lon:139.6503,currency:'JPY',countryCode:'JP',unit:100},
+  HND:{lat:35.6762,lon:139.6503,currency:'JPY',countryCode:'JP',unit:100},
+  KIX:{lat:34.6937,lon:135.5023,currency:'JPY',countryCode:'JP',unit:100},
+  CTS:{lat:43.0618,lon:141.3545,currency:'JPY',countryCode:'JP',unit:100},
+  OKA:{lat:26.2124,lon:127.6809,currency:'JPY',countryCode:'JP',unit:100},
+  TPE:{lat:25.0330,lon:121.5654,currency:'TWD',countryCode:'TW',unit:100},
+  HKG:{lat:22.3193,lon:114.1694,currency:'HKD',countryCode:'HK',unit:100},
+  BKK:{lat:13.7563,lon:100.5018,currency:'THB',countryCode:'TH',unit:100},
+  DAD:{lat:16.0544,lon:108.2022,currency:'VND',countryCode:'VN',unit:1000},
+  SGN:{lat:10.8231,lon:106.6297,currency:'VND',countryCode:'VN',unit:1000},
+  HAN:{lat:21.0278,lon:105.8342,currency:'VND',countryCode:'VN',unit:1000},
+  SIN:{lat:1.3521,lon:103.8198,currency:'SGD',countryCode:'SG',unit:1},
+  GUM:{lat:13.4443,lon:144.7937,currency:'USD',countryCode:'US',unit:1},
+  SYD:{lat:-33.8688,lon:151.2093,currency:'AUD',countryCode:'AU',unit:1},
+  LAX:{lat:34.0522,lon:-118.2437,currency:'USD',countryCode:'US',unit:1},
+  CDG:{lat:48.8566,lon:2.3522,currency:'EUR',countryCode:'FR',unit:1},
+  LHR:{lat:51.5074,lon:-0.1278,currency:'GBP',countryCode:'GB',unit:1}
+};
+
+async function fetchJson(url){
+  const controller=new AbortController();
+  const timer=setTimeout(()=>controller.abort(),5000);
+  try{
+    const r=await fetch(url,{signal:controller.signal});
+    if(!r.ok) throw Error('HTTP '+r.status);
+    return await r.json();
+  }finally{clearTimeout(timer)}
+}
+
+async function liveExchange(meta){
+  if(!meta?.currency) return null;
+  try{
+    const d=await fetchJson('https://api.frankfurter.dev/v2/rate/'+meta.currency.toLowerCase()+'/krw');
+    const rate=Number(d?.rate);
+    if(!rate) return null;
+    const unit=meta.unit||1;
+    return {currency:meta.currency,unit,krw:Math.round(rate*unit),date:d.date||''};
+  }catch{return null}
+}
+
+async function liveWeather(item,meta){
+  if(!meta?.lat||!meta?.lon) return null;
+  const dep=new Date(item.departureDate+'T00:00:00Z');
+  const daysAway=Math.ceil((dep-Date.now())/86400000);
+  if(daysAway<0||daysAway>15) return {available:false,daysAway};
+  try{
+    const url='https://api.open-meteo.com/v1/forecast?latitude='+meta.lat+'&longitude='+meta.lon+
+      '&daily=temperature_2m_max,temperature_2m_min,precipitation_probability_max&timezone=auto&forecast_days=16';
+    const d=await fetchJson(url);
+    const i=(d?.daily?.time||[]).indexOf(item.departureDate);
+    if(i<0) return {available:false,daysAway};
+    return {
+      available:true,
+      max:Math.round(Number(d.daily.temperature_2m_max?.[i])),
+      min:Math.round(Number(d.daily.temperature_2m_min?.[i])),
+      rain:Math.round(Number(d.daily.precipitation_probability_max?.[i]||0))
+    };
+  }catch{return null}
+}
+
+async function liveHolidays(item,meta){
+  if(!meta?.countryCode) return null;
+  try{
+    const start=new Date(item.departureDate+'T00:00:00Z');
+    const end=new Date(item.returnDate+'T00:00:00Z');
+    const years=[...new Set([start.getUTCFullYear(),end.getUTCFullYear()])];
+    const all=[];
+    for(const y of years){
+      const d=await fetchJson('https://date.nager.at/api/v3/publicholidays/'+y+'/'+meta.countryCode);
+      if(Array.isArray(d)) all.push(...d);
+    }
+    return all.filter(h=>{
+      const x=new Date(h.date+'T00:00:00Z');
+      return x>=start&&x<=end;
+    }).slice(0,3);
+  }catch{return null}
+}
+
+async function secondReplyLive(item){
+  const city=item.cityName||item.toCity;
+  const {tip}=guideFor(item);
+  const meta=LIVE_META[item.toCity];
+  const [weather,fx,holidays]=await Promise.all([
+    liveWeather(item,meta),
+    liveExchange(meta),
+    liveHolidays(item,meta)
+  ]);
+
+  let weatherText='출발일이 아직 장기예보 범위 밖이에요. 출발 약 2주 전 실제 예보를 다시 확인하세요.';
+  if(weather?.available) weatherText=`출발일 예보 기준 ${weather.min}~${weather.max}℃ · 강수확률 최고 ${weather.rain}%예요. 예보는 바뀔 수 있으니 출발 직전 다시 확인하세요.`;
+
+  let fxText='목적지 통화의 최신 환율을 출발 전에 다시 확인하세요.';
+  if(fx) fxText=`현재 기준 ${fx.unit.toLocaleString('ko-KR')} ${fx.currency} ≈ ${fx.krw.toLocaleString('ko-KR')}원${fx.date?' ('+fx.date+' 기준)':''}. 카드 외에 소액 현금도 준비해두면 편해요.`;
+
+  let holidayText='여행기간에 확인된 공식 공휴일 정보가 없습니다. 지역 축제·대형행사는 별도로 확인하는 게 좋아요.';
+  if(Array.isArray(holidays)&&holidays.length){
+    holidayText='여행기간 중 공식 공휴일: '+holidays.map(h=>h.date+' '+(h.localName||h.name)).join(' · ')+' — 교통·영업시간·숙박 혼잡을 미리 확인하세요.';
+  }else if(holidays===null){
+    holidayText='공식 공휴일 데이터를 확인하지 못했어요. 출발 전에 현지 공휴일·축제·대형행사를 다시 확인하세요.';
+  }
+
+  return [
+    `📌 ${city} 출발 전에 추가로 체크할 3가지`,
+    '',
+    '🌦️ 날씨·옷차림',
+    weatherText,
+    '',
+    '💴 환율·결제',
+    fxText,
+    '',
+    '📅 현지 공휴일·행사',
+    holidayText,
+    '',
+    `${tip.flag} 최신 정보는 변동될 수 있으니 출발 직전에 한 번 더 확인하세요.`
+  ].join('\n');
+}
+
 function firstReply(item){
   const city=item.cityName||item.toCity;
   const {tip,guide}=guideFor(item);
@@ -223,7 +342,8 @@ export default async()=>{
 
     reserved.add(reserveKey);
     try{
-      const result=await postReply(replyToId,replyText(item),accessToken);
+      const text=stage===2?await secondReplyLive(item):firstReply(item);
+      const result=await postReply(replyToId,text,accessToken);
       item.replyToId=replyToId;
       item.status='posted';
       item.replyPostId=result?.id||null;
