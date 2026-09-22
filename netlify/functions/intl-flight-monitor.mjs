@@ -392,11 +392,9 @@ export default async()=>{
         threadsPosted=[item,...threadsPosted].slice(0,300);
         threadsPostedSet.add(key);
         if(result?.id){
-          await queueThreadsReply({
-            id:'reply_'+result.id,
+          const replyBase={
             rootPostId:result.id,
             queuedAt:new Date().toISOString(),
-            dueAt:new Date(Date.now()+10*60*1000).toISOString(),
             status:'pending',
             attempts:0,
             toCity:group[0].toCity,
@@ -404,7 +402,21 @@ export default async()=>{
             countryName:group[0].countryName||'',
             departureDate:group[0].departureDate,
             returnDate:group[0].returnDate,
-            totalPrice:group[0].totalPrice
+            totalPrice:group[0].totalPrice,
+            previousPrice:group[0].old?.price||null,
+            dropPercent:group[0].dropPercent||0
+          };
+          await queueThreadsReply({
+            ...replyBase,
+            id:'reply1_'+result.id,
+            stage:1,
+            dueAt:new Date(Date.now()+10*60*1000).toISOString()
+          });
+          await queueThreadsReply({
+            ...replyBase,
+            id:'reply2_'+result.id,
+            stage:2,
+            dueAt:new Date(Date.now()+20*60*1000).toISOString()
           });
         }
         run.threadsCount++;
