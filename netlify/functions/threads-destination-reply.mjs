@@ -93,72 +93,46 @@ function guideFor(item){
   return {tip,guide};
 }
 
-function decisionReply(item){
+function firstReply(item){
   const city=item.cityName||item.toCity;
-  const days=tripDays(item);
-  const weekdays=weekdayCount(item);
   const {tip,guide}=guideFor(item);
-  const price=Number(item.totalPrice||0);
-  const old=Number(item.previousPrice||0);
-  const diff=old>price?old-price:0;
-  const pct=old>price?Math.round(diff/old*100):Math.round(Number(item.dropPercent||0));
-  const priceLine=old>price
-    ? `💰 왕복 ${price.toLocaleString('ko-KR')}원 · 이전 기준보다 ${pct}%↓ (${diff.toLocaleString('ko-KR')}원 하락)`
-    : `💰 왕복 ${price.toLocaleString('ko-KR')}원`;
   return [
-    `${tip.flag} ${city} 항공권, 살지 고민된다면 이것부터 체크`,
+    `${tip.flag} ${city} 가기 전에 먼저 체크할 3가지`,
     '',
-    priceLine,
-    `🗓️ ${item.departureDate} → ${item.returnDate} · ${days}일 · 평일 ${weekdays}일 포함`,
-    '',
-    '🏨 숙소 위치',
-    guide.stay,
-    '',
-    '🚃 공항·시내 이동',
+    '🚇 공항 → 시내',
     guide.transit,
     '',
-    '💡 예약 전 체크',
-    '수하물 포함 여부 · 출도착 시간 · 변경/취소 조건은 실제 예약화면에서 꼭 다시 확인하세요.',
+    '🏨 숙소 어디에?',
+    guide.stay,
     '',
-    '가격은 실시간으로 바뀔 수 있어요. 위 항공권 링크에서 최종 가격 확인 👆'
+    '⚠️ 목적지 팁',
+    guide.extra,
+    '',
+    '항공권 예약 전에는 실제 예약화면에서 수하물 · 출도착 공항 · 변경/취소 조건을 꼭 확인하세요.'
   ].join('\n');
 }
 
-function itineraryReply(item){
+function secondReply(item){
   const city=item.cityName||item.toCity;
-  const days=tripDays(item);
-  const {tip,guide}=guideFor(item);
-  const route=days<=4?guide.short:guide.long;
-  const headers=[
-    `🧳 ${city} ${days}일 일정은 이렇게 짜보세요`,
-    `📌 ${city} 가게 됐다면 저장해둘 ${days}일 여행 메모`,
-    `🗺️ ${city} ${days}일, 동선은 이렇게 잡으면 편해요`
-  ];
-  const header=headers[hash(item.rootPostId)%headers.length];
+  const {tip}=guideFor(item);
   return [
-    header,
+    `📌 ${city} 출발 전에 추가로 체크할 3가지`,
     '',
-    '🗺️ 추천 동선',
-    route,
+    '🌦️ 날씨·옷차림',
+    '여행 날짜가 가까워지면 현지 예보를 확인하고, 먼 일정이라면 해당 시기의 평년 기후를 참고하세요.',
     '',
-    '🍜 먹을 것',
-    tip.food,
+    '💴 환율·결제',
+    '출발 전 최신 환율을 확인하고 카드 사용이 어려운 곳에 대비해 소액 현금도 준비해두면 편해요.',
     '',
-    '📍 같이 볼 곳',
-    tip.spots,
+    '📅 현지 연휴·행사',
+    '여행기간과 현지 공휴일·축제·대형행사가 겹치는지 확인하세요. 숙박비와 교통 혼잡에 영향을 줄 수 있어요.',
     '',
-    '🚃 근교·추가 일정',
-    tip.nearby,
-    '',
-    '💡 여행 팁',
-    guide.extra,
-    '',
-    '항공권 가격은 위 게시물에서 실시간으로 확인하세요 👆'
+    `${tip.flag} 실제 날씨·환율·행사 정보는 출발 전에 최신 정보로 다시 확인하세요.`
   ].join('\n');
 }
 
 function replyText(item){
-  return Number(item.stage||1)===2?itineraryReply(item):decisionReply(item);
+  return Number(item.stage||1)===2?secondReply(item):firstReply(item);
 }
 async function postReply(rootPostId,text,accessToken){
   const params=new URLSearchParams({
@@ -192,53 +166,74 @@ export default async()=>{
   let queue=await store.get('threads-reply-queue',{type:'json'});
   queue=Array.isArray(queue)?queue:[];
 
-  // 1차 답글만 운영합니다. 기존 2차 답글 대기 항목은 모두 취소합니다.
-  const firstPostedByRoot=new Map();
+  // 원글당 1차·2차 답글을 각각 한 번만 게시합니다.
+  const byRoot=new Map();
   for(const item of queue){
     const root=String(item.rootPostId||'');
     if(!root) continue;
+    if(!byRoot.has(root)) byRoot.set(root,{stage1:null,stage2:null});
+    const state=byRoot.get(root);
     const stage=Number(item.stage||1);
-    if(stage!==1 && item.status==='pending'){
-      item.status='cancelled';
-      item.cancelledAt=new Date().toISOString();
-      item.cancelReason='first_reply_only';
-    }
-    if(stage===1 && item.status==='posted' && item.replyPostId && !firstPostedByRoot.has(root)){
-      firstPostedByRoot.set(root,item);
+    if(item.status==='posted' && item.replyPostId){
+      if(stage===1 && !state.stage1) state.stage1=item;
+      if(stage===2 && !state.stage2) state.stage2=item;
     }
   }
 
-  // 이미 1차 답글이 올라간 원글의 남은 1차 대기 항목도 중복 게시하지 않습니다.
+  // 이전에 '1차만' 설정 때문에 취소된 2차는 그대로 두고, 새 게시물의 pending 항목만 처리합니다.
   for(const item of queue){
-    if(item.status!=='pending' || Number(item.stage||1)!==1) continue;
-    if(firstPostedByRoot.has(String(item.rootPostId||''))){
+    if(item.status!=='pending') continue;
+    const state=byRoot.get(String(item.rootPostId||''))||{};
+    const stage=Number(item.stage||1);
+    if((stage===1&&state.stage1)||(stage===2&&state.stage2)){
       item.status='skipped_duplicate';
       item.skippedAt=new Date().toISOString();
     }
   }
 
   const now=Date.now();
-  const due=queue.filter(x=>x.status==='pending' && Number(x.stage||1)===1 && new Date(x.dueAt).getTime()<=now).slice(0,10);
-  const reserved=new Set(firstPostedByRoot.keys());
+  const due=queue.filter(x=>x.status==='pending' && new Date(x.dueAt).getTime()<=now).slice(0,10);
+  const reserved=new Set();
 
   for(const item of due){
     const root=String(item.rootPostId||'');
-    if(reserved.has(root)){
+    const stage=Number(item.stage||1);
+    const reserveKey=root+':'+stage;
+    if(reserved.has(reserveKey)){
       item.status='skipped_duplicate';
       item.skippedAt=new Date().toISOString();
       continue;
     }
-    reserved.add(root);
+    const state=byRoot.get(root)||{stage1:null,stage2:null};
+    if((stage===1&&state.stage1)||(stage===2&&state.stage2)){
+      item.status='skipped_duplicate';
+      item.skippedAt=new Date().toISOString();
+      continue;
+    }
+
+    let replyToId=item.rootPostId;
+    if(stage===2){
+      const first=state.stage1||queue.find(x=>x.rootPostId===item.rootPostId && Number(x.stage||1)===1 && x.status==='posted' && x.replyPostId);
+      if(!first?.replyPostId){
+        item.dueAt=new Date(Date.now()+5*60*1000).toISOString();
+        continue;
+      }
+      replyToId=first.replyPostId;
+    }
+
+    reserved.add(reserveKey);
     try{
-      const result=await postReply(item.rootPostId,decisionReply(item),accessToken);
-      item.replyToId=item.rootPostId;
+      const result=await postReply(replyToId,replyText(item),accessToken);
+      item.replyToId=replyToId;
       item.status='posted';
       item.replyPostId=result?.id||null;
       item.postedAt=new Date().toISOString();
       item.attempts=Number(item.attempts||0)+1;
       item.lastError=null;
+      if(stage===1) state.stage1=item; else state.stage2=item;
+      byRoot.set(root,state);
     }catch(e){
-      reserved.delete(root);
+      reserved.delete(reserveKey);
       item.attempts=Number(item.attempts||0)+1;
       item.lastError=String(e?.message||e);
       item.lastTriedAt=new Date().toISOString();
