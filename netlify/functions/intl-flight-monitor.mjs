@@ -394,6 +394,7 @@ export default async()=>{
         if(result?.id){
           const replyBase={
             rootPostId:result.id,
+            replyVersion:4,
             queuedAt:new Date().toISOString(),
             status:'pending',
             attempts:0,
