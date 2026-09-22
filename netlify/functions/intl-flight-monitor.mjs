@@ -394,7 +394,7 @@ export default async()=>{
         if(result?.id){
           const replyBase={
             rootPostId:result.id,
-            replyVersion:4,
+            replyVersion:5,
             queuedAt:new Date().toISOString(),
             status:'pending',
             attempts:0,
@@ -412,12 +412,6 @@ export default async()=>{
             id:'reply1_'+result.id,
             stage:1,
             dueAt:new Date(Date.now()+10*60*1000).toISOString()
-          });
-          await queueThreadsReply({
-            ...replyBase,
-            id:'reply2_'+result.id,
-            stage:2,
-            dueAt:new Date(Date.now()+20*60*1000).toISOString()
           });
         }
         run.threadsCount++;
