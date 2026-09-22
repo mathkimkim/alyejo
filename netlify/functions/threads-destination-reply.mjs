@@ -32,6 +32,32 @@ const CITY_TIPS={
   LHR:{flag:'🇬🇧',food:'피시앤칩스 · 애프터눈티 · 펍 음식',spots:'웨스트민스터 · 타워브리지 · 코벤트가든',nearby:'도보와 지하철을 섞으면 중심 관광지 이동이 편해요.'}
 };
 
+const CITY_GUIDES={
+  FUK:{
+    stay:'처음이면 하카타역 주변, 쇼핑·저녁 일정이 많으면 텐진 쪽이 편해요.',
+    transit:'공항에서 시내가 가까워 지하철 중심으로 움직이기 편합니다.',
+    short:'하카타·텐진 → 다자이후 → 모모치·오호리공원',
+    long:'하카타·텐진 → 다자이후 → 유후인 당일치기 → 모모치·오호리공원',
+    extra:'유후인은 주말·성수기라면 열차나 버스 좌석을 미리 확인하는 편이 좋아요.'
+  },
+  NRT:{stay:'첫 여행이면 신주쿠·시부야·우에노처럼 교통이 편한 역세권이 무난해요.',transit:'JR·지하철 노선이 많아 숙소와 주요 일정의 노선을 먼저 맞추면 이동이 편해요.',short:'시부야·하라주쿠 → 아사쿠사·스카이트리 → 신주쿠',long:'시부야·하라주쿠 → 아사쿠사 → 긴자·도쿄역 → 요코하마 또는 가마쿠라',extra:'출퇴근 시간대 전철은 붐빌 수 있어 큰 짐 이동은 시간을 여유 있게 잡는 편이 좋아요.'},
+  HND:{stay:'첫 여행이면 신주쿠·시부야·우에노처럼 교통이 편한 역세권이 무난해요.',transit:'JR·지하철 노선이 많아 숙소와 주요 일정의 노선을 먼저 맞추면 이동이 편해요.',short:'시부야·하라주쿠 → 아사쿠사·스카이트리 → 신주쿠',long:'시부야·하라주쿠 → 아사쿠사 → 긴자·도쿄역 → 요코하마 또는 가마쿠라',extra:'출퇴근 시간대 전철은 붐빌 수 있어 큰 짐 이동은 시간을 여유 있게 잡는 편이 좋아요.'},
+  KIX:{stay:'먹거리·야간 일정 위주면 난바, 교통과 쇼핑을 함께 보면 우메다 쪽이 편해요.',transit:'오사카 시내는 전철 중심으로 이동하고 교토·고베를 붙일 때는 철도 동선을 먼저 잡는 게 좋아요.',short:'난바·도톤보리 → 우메다 → 오사카성',long:'난바·도톤보리 → 우메다 → 교토 하루 → 고베 또는 오사카 시내',extra:'USJ를 넣는 날은 다른 일정을 많이 붙이지 않는 편이 편합니다.'},
+  CTS:{stay:'삿포로역은 이동, 스스키노는 식사·야간 일정에 편해요.',transit:'시내는 지하철이 편하고 오타루는 JR로 당일치기하기 좋아요.',short:'오도리·삿포로역 → 스스키노 → 오타루',long:'삿포로 시내 → 오타루 → 근교 온천 또는 비에이·후라노 계절 일정',extra:'겨울에는 눈 때문에 이동시간이 늘 수 있어 일정 사이 여유를 두는 게 좋아요.'},
+  OKA:{stay:'차 없이 시내 위주면 나하, 바다·리조트 중심이면 중북부 숙소가 편해요.',transit:'나하 시내는 모노레일, 중북부까지 넓게 볼 계획이면 렌터카가 편한 편이에요.',short:'국제거리·슈리 → 아메리칸빌리지 → 해변',long:'나하 → 중부 해안 → 북부 드라이브 → 국제거리',extra:'렌터카 이용 시 주차 가능 여부와 반납 시간을 숙소·항공편에 맞춰 확인하세요.'},
+  TPE:{stay:'첫 여행이면 타이베이역·시먼딩 주변이 이동하기 편해요.',transit:'MRT가 잘 되어 있어 시내 이동이 쉽고 지우펀·스펀은 버스·철도 동선을 따로 잡는 게 좋아요.',short:'시먼딩 → 중정기념당·융캉제 → 타이베이101',long:'타이베이 시내 → 지우펀·스펀 하루 → 야시장·카페 일정',extra:'야시장은 저녁에 넣고 낮에는 도심 명소를 묶으면 동선이 깔끔해요.'},
+  BKK:{stay:'첫 여행이면 BTS·MRT 역 가까운 숙소가 이동하기 편해요.',transit:'BTS·MRT와 택시를 섞되 출퇴근 시간 도로 정체를 고려하는 게 좋아요.',short:'왕궁·왓아룬 → 시암·쇼핑 → 야시장',long:'왕궁·왓아룬 → 시암 → 아유타야 하루 → 야시장·마사지',extra:'사원 방문일에는 어깨·무릎을 가릴 수 있는 복장을 준비하는 편이 좋아요.'},
+  DAD:{stay:'해변 휴양이면 미케비치, 시내 접근성을 보면 한강 주변이 편해요.',transit:'다낭 시내와 호이안을 함께 볼 때는 차량 이동 시간을 감안해 일정을 묶는 게 좋아요.',short:'미케비치 → 한시장·한강 → 호이안 저녁',long:'다낭 시내 → 호이안 → 바나힐 또는 휴양일 → 미케비치',extra:'호이안은 늦은 오후부터 저녁까지 잡으면 낮과 야경을 함께 보기 좋아요.'},
+  SIN:{stay:'MRT역 가까운 숙소를 잡으면 주요 관광지 이동이 편해요.',transit:'MRT 중심으로 대부분 이동 가능하고 더운 시간에는 실내 일정을 섞는 게 좋아요.',short:'마리나베이 → 가든스바이더베이 → 차이나타운',long:'마리나베이 → 센토사 → 차이나타운·리틀인디아 → 호커센터',extra:'실내 냉방이 강한 곳이 많아 얇은 겉옷 하나가 유용해요.'},
+  HKG:{stay:'침사추이는 관광·야경, 센트럴은 홍콩섬 일정에 편해요.',transit:'MTR과 페리를 함께 쓰면 구룡과 홍콩섬 이동이 편합니다.',short:'침사추이 → 센트럴 → 빅토리아피크',long:'침사추이 → 센트럴 → 피크 → 란타우 또는 테마파크 일정',extra:'옥토퍼스 카드 같은 교통 결제수단을 준비하면 대중교통 이용이 편해요.'}
+};
+
+function tripDays(item){
+  const s=new Date(item.departureDate+'T00:00:00Z');
+  const e=new Date(item.returnDate+'T00:00:00Z');
+  return Math.max(1,Math.round((e-s)/86400000)+1);
+}
+
 const COUNTRY_FALLBACK={
   '일본':{flag:'🇯🇵',food:'라멘 · 스시 · 지역별 현지 음식',spots:'도심 상권 · 전통거리 · 전망 명소',nearby:'철도 이동이 편해서 근교 도시를 하루 일정으로 붙이기 좋아요.'},
   '태국':{flag:'🇹🇭',food:'팟타이 · 똠얌 · 야시장 먹거리',spots:'사원 · 야시장 · 쇼핑몰',nearby:'마사지와 야시장 일정을 저녁에 넣기 좋아요.'},
@@ -41,20 +67,51 @@ const COUNTRY_FALLBACK={
 
 function replyText(item){
   const city=item.cityName||item.toCity;
+  const days=tripDays(item);
   const tip=CITY_TIPS[item.toCity]||COUNTRY_FALLBACK[item.countryName]||{
     flag:'🌏',
     food:'현지 대표 음식과 로컬 마켓',
     spots:'도심 대표 명소와 현지 거리',
     nearby:'여행기간이 길다면 근교 도시를 하루 일정으로 붙여보세요.'
   };
-  const variants=[
-    `${tip.flag} ${city} 간다면 이것도 참고 👀\n\n🍜 ${tip.food}\n📍 ${tip.spots}\n🚃 ${tip.nearby}\n\n항공권 가격은 위 글에서 실시간으로 확인하세요 👆`,
-    `${tip.flag} ${city} 여행 메모해두세요.\n\n먹거리 👉 ${tip.food}\n가볼 곳 👉 ${tip.spots}\n근교 팁 👉 ${tip.nearby}\n\n항공권은 위 게시물에서 확인 👆`,
-    `✈️ ${city} 가게 된다면?\n\n🍽️ ${tip.food}\n📸 ${tip.spots}\n🧳 ${tip.nearby}\n\n특가 항공권은 위 글 링크에서 확인할 수 있어요 👆`
+  const guide=CITY_GUIDES[item.toCity]||{
+    stay:'숙소는 주요 역이나 대중교통 접근성이 좋은 지역부터 비교해보세요.',
+    transit:'공항↔도심 이동과 주요 관광지 사이 이동시간을 먼저 확인하면 일정 짜기가 쉬워요.',
+    short:tip.spots,
+    long:tip.spots+' → '+tip.nearby.replace(/\.$/,''),
+    extra:'인기 명소·교통편은 출발 전에 운영시간과 예약 필요 여부를 한 번 확인하세요.'
+  };
+  const route=days<=4?guide.short:guide.long;
+  const price=Number(item.totalPrice||0).toLocaleString('ko-KR');
+  const headers=[
+    `${tip.flag} ${city} ${days}일 여행이면 이렇게 짜보세요`,
+    `🧳 ${city} ${days}일, 항공권 잡았다면 이 정보부터 저장 👀`,
+    `${tip.flag} ${city} 가는 분들을 위한 ${days}일 여행 메모`
   ];
-  return variants[hash(item.rootPostId)%variants.length];
-}
+  const header=headers[hash(item.rootPostId)%headers.length];
 
+  return [
+    header,
+    '',
+    '🗺️ 추천 동선',
+    route,
+    '',
+    '🍜 먹을 것',
+    tip.food,
+    '',
+    '🏨 숙소 팁',
+    guide.stay,
+    '',
+    '🚃 이동 팁',
+    guide.transit,
+    '',
+    '💡 한 가지 더',
+    guide.extra,
+    '',
+    price&&price!=='0'?'✈️ 위 글 항공권: 왕복 '+price+'원':'✈️ 항공권은 위 글에서 확인하세요.',
+    '가격은 실시간으로 달라질 수 있으니 위 링크에서 다시 확인하세요 👆'
+  ].join('\n');
+}
 async function postReply(rootPostId,text,accessToken){
   const params=new URLSearchParams({
     media_type:'TEXT',
