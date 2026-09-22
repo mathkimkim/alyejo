@@ -67,6 +67,49 @@ export default async(req)=>{
       const id=String(body.id||'');
       const idx=watches.findIndex(w=>w.id===id);
       if(idx<0) return Response.json({error:'알림 조건을 찾을 수 없습니다.'},{status:404});
+
+      if(body.edit===true){
+        const old=watches[idx];
+        const targetPrice=Math.max(1,Number(body.targetPrice||0));
+        const dep=String(body.dep||old.dep||'ICN').toUpperCase();
+        const period=Number(body.period||old.period||5);
+        const region=body.region??old.region??'all';
+        const combineRegions=body.combineRegions===true;
+        const countries=Array.isArray(body.countries)?body.countries.map(x=>String(x).toUpperCase()):[];
+        const airports=Array.isArray(body.airports)?body.airports.map(x=>String(x).toUpperCase()):[];
+        const destinationLabel=String(body.destinationLabel||'');
+        const departureDate=body.departureDate;
+
+        if(!departureDate) return Response.json({error:'출발일이 필요합니다.'},{status:400});
+        if(!region && !countries.length && !airports.length) return Response.json({error:'대륙·국가·공항 중 하나 이상 선택하세요.'},{status:400});
+
+        const duplicate=watches.find((w,i)=>
+          i!==idx && w.dep===dep && Number(w.period)===period && w.region===region && !!w.combineRegions===combineRegions &&
+          JSON.stringify(w.countries||[])===JSON.stringify(countries) && JSON.stringify(w.airports||[])===JSON.stringify(airports) &&
+          w.departureDate===departureDate && Number(w.targetPrice)===targetPrice
+        );
+        if(duplicate) return Response.json({error:'같은 알림 조건이 이미 등록되어 있습니다.'},{status:409});
+
+        const [result,tracking]=await Promise.all([
+          discoverMrt({dep,period,region,targetPrice,departureDate,countries,airports,combineRegions}),
+          trackMrt({dep,period,region,departureDate,limit:50,countries,airports,combineRegions})
+        ]);
+        const mergedRows=[...tracking.rows,...result.rows];
+        const initialBest=bestMap(mergedRows);
+        watches[idx]={
+          ...old,
+          dep,period,region,combineRegions,countries,airports,destinationLabel,departureDate,targetPrice,
+          bestByDestination:initialBest,
+          alertBaselineByDestination:{...initialBest},
+          lastFares:result.rows,
+          trackedAirportCount:tracking.trackedAirportCount,
+          lastError:null,
+          updatedAt:new Date().toISOString()
+        };
+        await store.setJSON('watches',watches);
+        return Response.json({ok:true,edited:true,watch:publicWatch(watches[idx]),count:result.rows.length});
+      }
+
       watches[idx]={...watches[idx],enabled:!!body.enabled,updatedAt:new Date().toISOString()};
       await store.setJSON('watches',watches);
       return Response.json({ok:true,watch:publicWatch(watches[idx])});
