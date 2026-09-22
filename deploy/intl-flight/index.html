@@ -60,6 +60,7 @@
   <div class="actions">
     <button id="discover" class="action">최저가 찾기</button>
     <button id="watch" class="action secondary">🔔 이 조건 알림 추가</button>
+    <button id="cancelEdit" class="action secondary" hidden>수정 취소</button>
   </div>
   <button id="stop" class="action secondary stop">모든 알림 끄기</button>
   <div id="state" class="status">조건을 설정한 뒤 검색하거나 알림을 켜세요.</div>
@@ -132,7 +133,7 @@ const base=new Date();base.setDate(base.getDate()+14);const end=new Date(base);e
 const continents=[['asia','아시아'],['europe','유럽'],['northamerica','북미'],['oceania','오세아니아'],['middleeast','중동']];
 const continentNames=Object.fromEntries(continents);
 const supportedRegions=continents.map(x=>x[0]).join(',');
-let airportCatalog=[],selectedContinents=['asia'],selectedCountries=[],selectedAirports=[],focusedContinent='asia',focusedCountry='',lastRows=[],activeDate='all',lastWindow=[],discoverShowAll=false,lastHistory=[],historyFilter='all',historyShowAll=false;
+let airportCatalog=[],selectedContinents=['asia'],selectedCountries=[],selectedAirports=[],focusedContinent='asia',focusedCountry='',lastRows=[],activeDate='all',lastWindow=[],discoverShowAll=false,lastHistory=[],historyFilter='all',historyShowAll=false,watchListData=[],editingWatchId='';
 
 function dateAdd(date,delta){const [y,m,d]=date.split('-').map(Number);return new Date(Date.UTC(y,m-1,d)+delta*86400000).toISOString().slice(0,10)}
 function dateLabel(v){const [,m,d]=v.split('-');return Number(m)+'/'+Number(d)}
@@ -317,15 +318,61 @@ function watchDestinationText(w){
 }
 function renderWatchList(watches){
   const list=Array.isArray(watches)?watches:[];
+  watchListData=list;
   $('watchCount').textContent='('+list.length+'/10)';
   if(!list.length){$('watchList').innerHTML='<div class="muted">아직 등록된 알림이 없습니다.</div>';return}
-  $('watchList').innerHTML=list.map(w=>`<div class="watchcard"><div class="watchrow"><div><div class="watchtitle">${esc(w.departureDate)} ±2일 · ${esc(watchDestinationText(w))}</div><div class="watchmeta">${esc(w.dep)} 출발 · ${esc(w.period)}일 일정 · 왕복 ${money(w.targetPrice)} 목표 · 목표가 도달 + 최저가 10% 이상 하락 알림<br>알림 직전 최신 가격 재확인 · 1시간마다 감시</div></div><span class="watchstate ${w.enabled?'on':'off'}">${w.enabled?'ON':'OFF'}</span></div><div class="watchactions"><button data-toggle="${esc(w.id)}" data-enabled="${w.enabled?'0':'1'}">${w.enabled?'끄기':'다시 켜기'}</button><button class="delete" data-delete="${esc(w.id)}">삭제</button></div></div>`).join('');
+  $('watchList').innerHTML=list.map(w=>`<div class="watchcard"><div class="watchrow"><div><div class="watchtitle">${esc(w.departureDate)} ±2일 · ${esc(watchDestinationText(w))}</div><div class="watchmeta">${esc(w.dep)} 출발 · ${esc(w.period)}일 일정 · 왕복 ${money(w.targetPrice)} 목표 · 목표가 도달 + 최저가 10% 이상 하락 알림<br>알림 직전 최신 가격 재확인 · 1시간마다 감시</div></div><span class="watchstate ${w.enabled?'on':'off'}">${w.enabled?'ON':'OFF'}</span></div><div class="watchactions"><button data-edit="${esc(w.id)}">수정</button><button data-toggle="${esc(w.id)}" data-enabled="${w.enabled?'0':'1'}">${w.enabled?'끄기':'다시 켜기'}</button><button class="delete" data-delete="${esc(w.id)}">삭제</button></div></div>`).join('');
+  $('watchList').querySelectorAll('[data-edit]').forEach(b=>b.onclick=()=>startEditWatch(b.dataset.edit));
   $('watchList').querySelectorAll('[data-toggle]').forEach(b=>b.onclick=()=>toggleWatch(b.dataset.toggle,b.dataset.enabled==='1'));
   $('watchList').querySelectorAll('[data-delete]').forEach(b=>b.onclick=()=>deleteWatch(b.dataset.delete));
 }
 async function loadWatches(){const r=await fetch('/api/intl-flight-watch'),j=await r.json();if(!r.ok)throw Error(j.error||'알림 목록 조회 실패');renderWatchList(j.watches||[]);return j.watches||[]}
 async function toggleWatch(id,enabled){const r=await fetch('/api/intl-flight-watch',{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({id,enabled})}),j=await r.json();if(!r.ok)throw Error(j.error||'알림 변경 실패');await loadWatches()}
-async function deleteWatch(id){const r=await fetch('/api/intl-flight-watch?id='+encodeURIComponent(id),{method:'DELETE'}),j=await r.json();if(!r.ok)throw Error(j.error||'알림 삭제 실패');renderWatchList(j.watches||[])}
+async function deleteWatch(id){const r=await fetch('/api/intl-flight-watch?id='+encodeURIComponent(id),{method:'DELETE'}),j=await r.json();if(!r.ok)throw Error(j.error||'알림 삭제 실패');if(editingWatchId===id)cancelEditWatch();renderWatchList(j.watches||[])}
+
+function editContinentsFromWatch(w){
+  const regions=String(w.region||'').split(',').filter(k=>continents.some(x=>x[0]===k));
+  return regions;
+}
+function startEditWatch(id){
+  const w=watchListData.find(x=>x.id===id);
+  if(!w)return;
+  editingWatchId=id;
+  $('dDep').value=w.dep||'ICN';
+  $('dDepartureDate').value=w.departureDate||'';
+  $('dPeriod').value=String(w.period||5);
+  $('dTarget').value=String(w.targetPrice||300000);
+  selectedContinents=editContinentsFromWatch(w);
+  selectedCountries=[...(w.countries||[])];
+  selectedAirports=[...(w.airports||[])];
+  if(selectedContinents.length)focusedContinent=selectedContinents[0];
+  else{
+    const a=airportCatalog.find(x=>selectedAirports.includes(x.airportCode)||selectedCountries.includes(x.countryCode));
+    if(a?.continent)focusedContinent=a.continent;
+  }
+  focusedCountry='';
+  renderDestinationPicker();updateSummary();saveForms();
+  $('watch').textContent='💾 알림 수정 저장';
+  $('cancelEdit').hidden=false;
+  $('state').innerHTML='<span class="ok">수정 중</span> · 조건을 바꾼 뒤 「알림 수정 저장」을 누르세요.';
+  document.querySelector('.stephead .step')?.scrollIntoView({behavior:'smooth',block:'start'});
+}
+function cancelEditWatch(){
+  editingWatchId='';
+  $('watch').textContent='🔔 이 조건 알림 추가';
+  $('cancelEdit').hidden=true;
+  $('state').textContent='수정을 취소했습니다.';
+}
+async function saveEditedWatch(p){
+  const r=await fetch('/api/intl-flight-watch',{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({id:editingWatchId,edit:true,...p})});
+  const j=await r.json();
+  if(!r.ok)throw Error(j.error||'알림 수정 실패');
+  editingWatchId='';
+  $('watch').textContent='🔔 이 조건 알림 추가';
+  $('cancelEdit').hidden=true;
+  await loadWatches();
+  return j;
+}
 
 function fmtHistoryTime(v){try{return new Date(v).toLocaleString('ko-KR',{month:'numeric',day:'numeric',hour:'2-digit',minute:'2-digit'})}catch{return v||''}}
 function historyHour(v){try{return new Date(v).toISOString().slice(0,13)}catch{return String(v||'').slice(0,13)}}
@@ -394,7 +441,8 @@ $('airportSearch').addEventListener('input',renderAirportButtons);
 ['dDep','dDepartureDate','dPeriod','dTarget','rDep','rArr','rStart','rEnd','rPeriod'].forEach(id=>$(id).addEventListener('change',()=>{saveForms();if(id.startsWith('d'))updateSummary();if(id==='dDep'||id==='dPeriod'){loadAirportCatalog().catch(e=>{$('state').innerHTML='<span class="warn">'+esc(e.message)+'</span>'})}}));
 $('discover').onclick=()=>doDiscover().catch(e=>$('state').textContent=e.message);
 $('routeSearch').onclick=()=>doRoute().catch(e=>$('routeState').textContent=e.message);
-$('watch').onclick=async()=>{try{saveForms();updateSummary();const p=discoverParams();if(!p.region&&!p.countries.length&&!p.airports.length)throw Error('대륙·국가·공항 중 하나 이상 선택하세요.');$('state').textContent='푸시 알림을 등록 중입니다…';const subscription=await subscribe();const r=await fetch('/api/intl-flight-watch',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({...p,subscription})}),j=await r.json();if(!r.ok)throw Error(j.error||'등록 실패');$('state').innerHTML=`<span class="ok">🔔 알림 등록 완료</span><br>${esc(p.departureDate)} ±2일 · ${esc(p.destinationLabel)} · 목표 ${money(p.targetPrice)} · 목표가 도달 + 최저가 10% 이상 하락 감시`;await loadWatches();await doDiscover()}catch(e){$('state').innerHTML='<span class="warn">'+esc(e.message)+'</span>'}};
+$('watch').onclick=async()=>{try{saveForms();updateSummary();const p=discoverParams();if(!p.region&&!p.countries.length&&!p.airports.length)throw Error('대륙·국가·공항 중 하나 이상 선택하세요.');if(editingWatchId){$('state').textContent='알림 조건을 수정 중입니다…';await saveEditedWatch(p);$('state').innerHTML=`<span class="ok">💾 알림 수정 완료</span><br>${esc(p.departureDate)} ±2일 · ${esc(p.destinationLabel)} · 목표 ${money(p.targetPrice)}`;await doDiscover();return}$('state').textContent='푸시 알림을 등록 중입니다…';const subscription=await subscribe();const r=await fetch('/api/intl-flight-watch',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({...p,subscription})}),j=await r.json();if(!r.ok)throw Error(j.error||'등록 실패');$('state').innerHTML=`<span class="ok">🔔 알림 등록 완료</span><br>${esc(p.departureDate)} ±2일 · ${esc(p.destinationLabel)} · 목표 ${money(p.targetPrice)} · 목표가 도달 + 최저가 10% 이상 하락 감시`;await loadWatches();await doDiscover()}catch(e){$('state').innerHTML='<span class="warn">'+esc(e.message)+'</span>'}};
+$('cancelEdit').onclick=cancelEditWatch;
 $('stop').onclick=async()=>{const r=await fetch('/api/intl-flight-watch',{method:'DELETE'}),j=await r.json();if(r.ok){renderWatchList(j.watches||[]);$('state').textContent='모든 알림을 껐습니다.'}};
 function monitorTime(v){
   if(!v)return '-';
