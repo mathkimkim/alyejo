@@ -286,7 +286,7 @@ export default async()=>{
   queue=Array.isArray(queue)?queue:[];
 
   // 이전 배포에서 남은 대기 작업이 중복 답글을 만들지 않도록 모두 폐기합니다.
-  const CURRENT_REPLY_VERSION=4;
+  const CURRENT_REPLY_VERSION=5;
   for(const item of queue){
     if(item.status==='pending' && Number(item.replyVersion||0)!==CURRENT_REPLY_VERSION){
       item.status='cancelled_legacy';
@@ -295,7 +295,16 @@ export default async()=>{
     }
   }
 
-  // 원글당 1차·2차 답글을 각각 한 번만 게시합니다.
+  // 현재는 1차 답글만 운영합니다. 2차 답글은 게시하지 않습니다.
+  for(const item of queue){
+    if(item.status==='pending' && Number(item.stage||1)!==1){
+      item.status='cancelled';
+      item.cancelledAt=new Date().toISOString();
+      item.cancelReason='second_reply_disabled';
+    }
+  }
+
+  // 원글당 1차 답글을 한 번만 게시합니다.
   const byRoot=new Map();
   for(const item of queue){
     const root=String(item.rootPostId||'');
@@ -321,7 +330,7 @@ export default async()=>{
   }
 
   const now=Date.now();
-  const due=queue.filter(x=>x.status==='pending' && Number(x.replyVersion||0)===CURRENT_REPLY_VERSION && new Date(x.dueAt).getTime()<=now).slice(0,10);
+  const due=queue.filter(x=>x.status==='pending' && Number(x.replyVersion||0)===CURRENT_REPLY_VERSION && Number(x.stage||1)===1 && new Date(x.dueAt).getTime()<=now).slice(0,10);
   const reserved=new Set();
 
   for(const item of due){
