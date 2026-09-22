@@ -65,9 +65,18 @@ const COUNTRY_FALLBACK={
   '대만':{flag:'🇹🇼',food:'우육면 · 샤오롱바오 · 야시장 먹거리',spots:'야시장 · 도심 명소 · 전망대',nearby:'철도로 근교를 하루 일정으로 다녀오기 편해요.'}
 };
 
-function replyText(item){
-  const city=item.cityName||item.toCity;
-  const days=tripDays(item);
+function weekdayCount(item){
+  const s=new Date(item.departureDate+'T00:00:00Z');
+  const e=new Date(item.returnDate+'T00:00:00Z');
+  let n=0;
+  for(let d=new Date(s);d<=e;d.setUTCDate(d.getUTCDate()+1)){
+    const day=d.getUTCDay();
+    if(day>=1&&day<=5)n++;
+  }
+  return n;
+}
+
+function guideFor(item){
   const tip=CITY_TIPS[item.toCity]||COUNTRY_FALLBACK[item.countryName]||{
     flag:'🌏',
     food:'현지 대표 음식과 로컬 마켓',
@@ -81,15 +90,51 @@ function replyText(item){
     long:tip.spots+' → '+tip.nearby.replace(/\.$/,''),
     extra:'인기 명소·교통편은 출발 전에 운영시간과 예약 필요 여부를 한 번 확인하세요.'
   };
+  return {tip,guide};
+}
+
+function decisionReply(item){
+  const city=item.cityName||item.toCity;
+  const days=tripDays(item);
+  const weekdays=weekdayCount(item);
+  const {tip,guide}=guideFor(item);
+  const price=Number(item.totalPrice||0);
+  const old=Number(item.previousPrice||0);
+  const diff=old>price?old-price:0;
+  const pct=old>price?Math.round(diff/old*100):Math.round(Number(item.dropPercent||0));
+  const priceLine=old>price
+    ? `💰 왕복 ${price.toLocaleString('ko-KR')}원 · 이전 기준보다 ${pct}%↓ (${diff.toLocaleString('ko-KR')}원 하락)`
+    : `💰 왕복 ${price.toLocaleString('ko-KR')}원`;
+  return [
+    `${tip.flag} ${city} 항공권, 살지 고민된다면 이것부터 체크`,
+    '',
+    priceLine,
+    `🗓️ ${item.departureDate} → ${item.returnDate} · ${days}일 · 평일 ${weekdays}일 포함`,
+    '',
+    '🏨 숙소 위치',
+    guide.stay,
+    '',
+    '🚃 공항·시내 이동',
+    guide.transit,
+    '',
+    '💡 예약 전 체크',
+    '수하물 포함 여부 · 출도착 시간 · 변경/취소 조건은 실제 예약화면에서 꼭 다시 확인하세요.',
+    '',
+    '가격은 실시간으로 바뀔 수 있어요. 위 항공권 링크에서 최종 가격 확인 👆'
+  ].join('\n');
+}
+
+function itineraryReply(item){
+  const city=item.cityName||item.toCity;
+  const days=tripDays(item);
+  const {tip,guide}=guideFor(item);
   const route=days<=4?guide.short:guide.long;
-  const price=Number(item.totalPrice||0).toLocaleString('ko-KR');
   const headers=[
-    `${tip.flag} ${city} ${days}일 여행이면 이렇게 짜보세요`,
-    `🧳 ${city} ${days}일, 항공권 잡았다면 이 정보부터 저장 👀`,
-    `${tip.flag} ${city} 가는 분들을 위한 ${days}일 여행 메모`
+    `🧳 ${city} ${days}일 일정은 이렇게 짜보세요`,
+    `📌 ${city} 가게 됐다면 저장해둘 ${days}일 여행 메모`,
+    `🗺️ ${city} ${days}일, 동선은 이렇게 잡으면 편해요`
   ];
   const header=headers[hash(item.rootPostId)%headers.length];
-
   return [
     header,
     '',
@@ -99,18 +144,21 @@ function replyText(item){
     '🍜 먹을 것',
     tip.food,
     '',
-    '🏨 숙소 팁',
-    guide.stay,
+    '📍 같이 볼 곳',
+    tip.spots,
     '',
-    '🚃 이동 팁',
-    guide.transit,
+    '🚃 근교·추가 일정',
+    tip.nearby,
     '',
-    '💡 한 가지 더',
+    '💡 여행 팁',
     guide.extra,
     '',
-    price&&price!=='0'?'✈️ 위 글 항공권: 왕복 '+price+'원':'✈️ 항공권은 위 글에서 확인하세요.',
-    '가격은 실시간으로 달라질 수 있으니 위 링크에서 다시 확인하세요 👆'
+    '항공권 가격은 위 게시물에서 실시간으로 확인하세요 👆'
   ].join('\n');
+}
+
+function replyText(item){
+  return Number(item.stage||1)===2?itineraryReply(item):decisionReply(item);
 }
 async function postReply(rootPostId,text,accessToken){
   const params=new URLSearchParams({
@@ -149,7 +197,17 @@ export default async()=>{
 
   for(const item of due){
     try{
-      const result=await postReply(item.rootPostId,replyText(item),accessToken);
+      let replyToId=item.rootPostId;
+      if(Number(item.stage||1)===2){
+        const first=queue.find(x=>x.rootPostId===item.rootPostId && Number(x.stage||1)===1 && x.status==='posted' && x.replyPostId);
+        if(first?.replyPostId) replyToId=first.replyPostId;
+        else{
+          item.dueAt=new Date(Date.now()+5*60*1000).toISOString();
+          continue;
+        }
+      }
+      const result=await postReply(replyToId,replyText(item),accessToken);
+      item.replyToId=replyToId;
       item.status='posted';
       item.replyPostId=result?.id||null;
       item.postedAt=new Date().toISOString();
