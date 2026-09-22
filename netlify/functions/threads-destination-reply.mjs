@@ -192,83 +192,53 @@ export default async()=>{
   let queue=await store.get('threads-reply-queue',{type:'json'});
   queue=Array.isArray(queue)?queue:[];
 
-  // Legacy queue entries had no stage. Treat them as stage 1, but allow only one
-  // stage-1 and one stage-2 reply per root post. This also prevents duplicate
-  // replies left over from deployments before the two-stage queue existed.
-  const byRoot=new Map();
+  // 1차 답글만 운영합니다. 기존 2차 답글 대기 항목은 모두 취소합니다.
+  const firstPostedByRoot=new Map();
   for(const item of queue){
     const root=String(item.rootPostId||'');
     if(!root) continue;
-    if(!byRoot.has(root)) byRoot.set(root,{stage1Posted:null,stage2Posted:null});
-    const state=byRoot.get(root);
     const stage=Number(item.stage||1);
-    if(item.status==='posted' && item.replyPostId){
-      if(stage===1 && !state.stage1Posted) state.stage1Posted=item;
-      if(stage===2 && !state.stage2Posted) state.stage2Posted=item;
+    if(stage!==1 && item.status==='pending'){
+      item.status='cancelled';
+      item.cancelledAt=new Date().toISOString();
+      item.cancelReason='first_reply_only';
+    }
+    if(stage===1 && item.status==='posted' && item.replyPostId && !firstPostedByRoot.has(root)){
+      firstPostedByRoot.set(root,item);
     }
   }
 
-  // Mark already-redundant pending entries as skipped before selecting due work.
+  // 이미 1차 답글이 올라간 원글의 남은 1차 대기 항목도 중복 게시하지 않습니다.
   for(const item of queue){
-    if(item.status!=='pending') continue;
-    const state=byRoot.get(String(item.rootPostId||''))||{};
-    const stage=Number(item.stage||1);
-    if((stage===1 && state.stage1Posted) || (stage===2 && state.stage2Posted)){
+    if(item.status!=='pending' || Number(item.stage||1)!==1) continue;
+    if(firstPostedByRoot.has(String(item.rootPostId||''))){
       item.status='skipped_duplicate';
       item.skippedAt=new Date().toISOString();
     }
   }
 
   const now=Date.now();
-  const due=queue.filter(x=>x.status==='pending' && new Date(x.dueAt).getTime()<=now).slice(0,10);
+  const due=queue.filter(x=>x.status==='pending' && Number(x.stage||1)===1 && new Date(x.dueAt).getTime()<=now).slice(0,10);
+  const reserved=new Set(firstPostedByRoot.keys());
 
   for(const item of due){
+    const root=String(item.rootPostId||'');
+    if(reserved.has(root)){
+      item.status='skipped_duplicate';
+      item.skippedAt=new Date().toISOString();
+      continue;
+    }
+    reserved.add(root);
     try{
-      const stage=Number(item.stage||1);
-      const root=String(item.rootPostId||'');
-      const state=byRoot.get(root)||{stage1Posted:null,stage2Posted:null};
-
-      if(stage===1 && state.stage1Posted){
-        item.status='skipped_duplicate';
-        item.skippedAt=new Date().toISOString();
-        continue;
-      }
-      if(stage===2 && state.stage2Posted){
-        item.status='skipped_duplicate';
-        item.skippedAt=new Date().toISOString();
-        continue;
-      }
-
-      let replyToId=item.rootPostId;
-      if(stage===2){
-        const first=state.stage1Posted||queue.find(x=>x.rootPostId===item.rootPostId && Number(x.stage||1)===1 && x.status==='posted' && x.replyPostId);
-        if(first?.replyPostId) replyToId=first.replyPostId;
-        else{
-          item.dueAt=new Date(Date.now()+5*60*1000).toISOString();
-          continue;
-        }
-      }
-
-      // Reserve this stage in memory before posting so a second legacy item in
-      // the same scheduled invocation cannot post the same content again.
-      if(stage===1) state.stage1Posted=item;
-      else state.stage2Posted=item;
-      byRoot.set(root,state);
-
-      const result=await postReply(replyToId,replyText(item),accessToken);
-      item.replyToId=replyToId;
+      const result=await postReply(item.rootPostId,decisionReply(item),accessToken);
+      item.replyToId=item.rootPostId;
       item.status='posted';
       item.replyPostId=result?.id||null;
       item.postedAt=new Date().toISOString();
       item.attempts=Number(item.attempts||0)+1;
       item.lastError=null;
     }catch(e){
-      const state=byRoot.get(String(item.rootPostId||''));
-      const stage=Number(item.stage||1);
-      if(state){
-        if(stage===1 && state.stage1Posted===item) state.stage1Posted=null;
-        if(stage===2 && state.stage2Posted===item) state.stage2Posted=null;
-      }
+      reserved.delete(root);
       item.attempts=Number(item.attempts||0)+1;
       item.lastError=String(e?.message||e);
       item.lastTriedAt=new Date().toISOString();
