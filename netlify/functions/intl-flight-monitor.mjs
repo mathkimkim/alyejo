@@ -37,6 +37,14 @@ async function saveMonitorRun(run){
   await store.setJSON('monitor-runs',runs);
 }
 
+async function queueThreadsReply(item){
+  let queue=await store.get('threads-reply-queue',{type:'json'});
+  queue=Array.isArray(queue)?queue:[];
+  if(queue.some(x=>x.rootPostId===item.rootPostId)) return;
+  queue.push(item);
+  await store.setJSON('threads-reply-queue',queue.slice(-300));
+}
+
 function eventKey(a){
   return [a.toCity,a.departureDate,a.returnDate,a.totalPrice,a.old?.price||''].join('|');
 }
@@ -383,6 +391,22 @@ export default async()=>{
         };
         threadsPosted=[item,...threadsPosted].slice(0,300);
         threadsPostedSet.add(key);
+        if(result?.id){
+          await queueThreadsReply({
+            id:'reply_'+result.id,
+            rootPostId:result.id,
+            queuedAt:new Date().toISOString(),
+            dueAt:new Date(Date.now()+10*60*1000).toISOString(),
+            status:'pending',
+            attempts:0,
+            toCity:group[0].toCity,
+            cityName:group[0].cityName||group[0].toCity,
+            countryName:group[0].countryName||'',
+            departureDate:group[0].departureDate,
+            returnDate:group[0].returnDate,
+            totalPrice:group[0].totalPrice
+          });
+        }
         run.threadsCount++;
         run.threadsPosts.push({
           cityName:group[0].cityName||group[0].toCity,
