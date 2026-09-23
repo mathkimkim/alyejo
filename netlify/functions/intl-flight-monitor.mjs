@@ -352,9 +352,15 @@ export default async()=>{
 
   run.alertCount=groups.size;
 
-  if(threadsAccessToken && pending.length){
+  // 공개 Threads 게시 규칙:
+  // - 개인 푸시 알림은 목표가 도달 OR 기준가 대비 10% 하락을 그대로 유지
+  // - 공개 Threads 글은 기준가격 대비 실제 10% 이상 하락한 경우에만 게시
+  // - 목표가 도달만으로는 게시하지 않음 (100원/수천원 등 미세 하락 공개 방지)
+  const threadsEligible=pending.filter(a=>Number(a.dropPercent||0)>=10);
+
+  if(threadsAccessToken && threadsEligible.length){
     const threadsGroups=new Map();
-    for(const a of pending){
+    for(const a of threadsEligible){
       const key=threadsEventKey(a);
       if(!threadsGroups.has(key)) threadsGroups.set(key,[]);
       threadsGroups.get(key).push(a);
@@ -391,29 +397,8 @@ export default async()=>{
         };
         threadsPosted=[item,...threadsPosted].slice(0,300);
         threadsPostedSet.add(key);
-        if(result?.id){
-          const replyBase={
-            rootPostId:result.id,
-            replyVersion:5,
-            queuedAt:new Date().toISOString(),
-            status:'pending',
-            attempts:0,
-            toCity:group[0].toCity,
-            cityName:group[0].cityName||group[0].toCity,
-            countryName:group[0].countryName||'',
-            departureDate:group[0].departureDate,
-            returnDate:group[0].returnDate,
-            totalPrice:group[0].totalPrice,
-            previousPrice:group[0].old?.price||null,
-            dropPercent:group[0].dropPercent||0
-          };
-          await queueThreadsReply({
-            ...replyBase,
-            id:'reply1_'+result.id,
-            stage:1,
-            dueAt:new Date(Date.now()+10*60*1000).toISOString()
-          });
-        }
+        // 자동 답글은 사용하지 않습니다.
+
         run.threadsCount++;
         run.threadsPosts.push({
           cityName:group[0].cityName||group[0].toCity,
