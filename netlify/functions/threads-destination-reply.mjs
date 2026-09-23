@@ -278,111 +278,20 @@ async function postReply(rootPostId,text,accessToken){
 }
 
 export default async()=>{
-  const accessToken=Netlify.env.get('THREADS_ACCESS_TOKEN')||'';
-  if(!accessToken) return;
-
   const store=getStore({name:'intl-flight-alert',consistency:'strong'});
   let queue=await store.get('threads-reply-queue',{type:'json'});
   queue=Array.isArray(queue)?queue:[];
-
-  // 이전 배포에서 남은 대기 작업이 중복 답글을 만들지 않도록 모두 폐기합니다.
-  const CURRENT_REPLY_VERSION=5;
+  const now=new Date().toISOString();
+  let cancelled=0;
   for(const item of queue){
-    if(item.status==='pending' && Number(item.replyVersion||0)!==CURRENT_REPLY_VERSION){
-      item.status='cancelled_legacy';
-      item.cancelledAt=new Date().toISOString();
-      item.cancelReason='legacy_reply_queue';
-    }
-  }
-
-  // 현재는 1차 답글만 운영합니다. 2차 답글은 게시하지 않습니다.
-  for(const item of queue){
-    if(item.status==='pending' && Number(item.stage||1)!==1){
+    if(item.status==='pending'){
       item.status='cancelled';
-      item.cancelledAt=new Date().toISOString();
-      item.cancelReason='second_reply_disabled';
+      item.cancelledAt=now;
+      item.cancelReason='all_threads_replies_disabled';
+      cancelled++;
     }
   }
-
-  // 원글당 1차 답글을 한 번만 게시합니다.
-  const byRoot=new Map();
-  for(const item of queue){
-    const root=String(item.rootPostId||'');
-    if(!root) continue;
-    if(!byRoot.has(root)) byRoot.set(root,{stage1:null,stage2:null});
-    const state=byRoot.get(root);
-    const stage=Number(item.stage||1);
-    if(item.status==='posted' && item.replyPostId){
-      if(stage===1 && !state.stage1) state.stage1=item;
-      if(stage===2 && !state.stage2) state.stage2=item;
-    }
-  }
-
-  // 이전에 '1차만' 설정 때문에 취소된 2차는 그대로 두고, 새 게시물의 pending 항목만 처리합니다.
-  for(const item of queue){
-    if(item.status!=='pending') continue;
-    const state=byRoot.get(String(item.rootPostId||''))||{};
-    const stage=Number(item.stage||1);
-    if((stage===1&&state.stage1)||(stage===2&&state.stage2)){
-      item.status='skipped_duplicate';
-      item.skippedAt=new Date().toISOString();
-    }
-  }
-
-  const now=Date.now();
-  const due=queue.filter(x=>x.status==='pending' && Number(x.replyVersion||0)===CURRENT_REPLY_VERSION && Number(x.stage||1)===1 && new Date(x.dueAt).getTime()<=now).slice(0,10);
-  const reserved=new Set();
-
-  for(const item of due){
-    const root=String(item.rootPostId||'');
-    const stage=Number(item.stage||1);
-    const reserveKey=root+':'+stage;
-    if(reserved.has(reserveKey)){
-      item.status='skipped_duplicate';
-      item.skippedAt=new Date().toISOString();
-      continue;
-    }
-    const state=byRoot.get(root)||{stage1:null,stage2:null};
-    if((stage===1&&state.stage1)||(stage===2&&state.stage2)){
-      item.status='skipped_duplicate';
-      item.skippedAt=new Date().toISOString();
-      continue;
-    }
-
-    let replyToId=item.rootPostId;
-    if(stage===2){
-      const first=state.stage1||queue.find(x=>x.rootPostId===item.rootPostId && Number(x.replyVersion||0)===CURRENT_REPLY_VERSION && Number(x.stage||1)===1 && x.status==='posted' && x.replyPostId);
-      if(!first?.replyPostId){
-        item.dueAt=new Date(Date.now()+5*60*1000).toISOString();
-        continue;
-      }
-      replyToId=first.replyPostId;
-    }
-
-    reserved.add(reserveKey);
-    try{
-      const text=stage===2?await secondReplyLive(item):firstReply(item);
-      const result=await postReply(replyToId,text,accessToken);
-      item.replyToId=replyToId;
-      item.status='posted';
-      item.replyPostId=result?.id||null;
-      item.postedAt=new Date().toISOString();
-      item.attempts=Number(item.attempts||0)+1;
-      item.lastError=null;
-      if(stage===1) state.stage1=item; else state.stage2=item;
-      byRoot.set(root,state);
-    }catch(e){
-      reserved.delete(reserveKey);
-      item.attempts=Number(item.attempts||0)+1;
-      item.lastError=String(e?.message||e);
-      item.lastTriedAt=new Date().toISOString();
-      if(item.attempts>=3) item.status='failed';
-    }
-  }
-
-  const cutoff=Date.now()-7*24*60*60*1000;
-  queue=queue.filter(x=>x.status==='pending'||new Date(x.postedAt||x.skippedAt||x.cancelledAt||x.queuedAt||0).getTime()>=cutoff).slice(-300);
-  await store.setJSON('threads-reply-queue',queue);
+  await store.setJSON('threads-reply-queue',queue.slice(-300));
+  console.log('threads-replies-disabled',{cancelled});
 };
-
 export const config={schedule:'*/5 * * * *'};
