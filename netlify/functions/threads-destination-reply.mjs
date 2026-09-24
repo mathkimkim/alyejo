@@ -281,8 +281,7 @@ export default async()=>{
   let posted=0;
   for(const item of queue){
     if(posted>=3) break;
-    if(item.toCity==='FUK' && (item.status!=='approved'||!item.source?.url)) continue;
-    if(item.toCity!=='FUK' && item.status!=='pending') continue;
+    if(item.status!=='approved'||!item.source?.url) continue;
     if(Date.parse(item.dueAt)>now) continue;
     if(!item.rootPostId||![1,2].includes(Number(item.stage))){
       item.status='needs_review';
@@ -300,15 +299,12 @@ export default async()=>{
     item.startedAt=new Date().toISOString();
     await store.setJSON('threads-reply-queue',queue.slice(-300));
     try{
-      let message=replyText(item);
-      if(item.toCity==='FUK'){
-        const source=item.source;
-        message=[
-          Number(item.stage)===1?'🇯🇵 후쿠오카 숙소·이동 여행 후기':'🇯🇵 후쿠오카 일정·먹거리 여행 후기',
-          source.title,
-          source.url
-        ].join('\n');
-      }
+      const city=item.cityName||item.toCity;
+      const message=[
+        Number(item.stage)===1?'✈️ '+city+' 숙소·이동 여행 후기':'✈️ '+city+' 일정·먹거리 여행 후기',
+        item.source.title,
+        item.source.url
+      ].join('\n');
       const result=await postReply(item.rootPostId,message,token);
       if(!result?.id) throw new Error('Threads did not return a reply ID');
       item.status='posted';
