@@ -21,7 +21,7 @@ export async function selectReplyBlog(stage,other,destination={toCity:'FUK',city
   const id=Netlify.env.get('NAVER_CLIENT_ID');
   const secret=Netlify.env.get('NAVER_CLIENT_SECRET');
   if(!id||!secret)throw Error('NAVER API 환경변수 없음');
-  const aliases={FUK:'후쿠오카',NRT:'도쿄',HND:'도쿄',KIX:'오사카',CTS:'삿포로',OKA:'오키나와',TPE:'타이베이',HKG:'홍콩',BKK:'방콕',DAD:'다낭',SGN:'호치민',HAN:'하노이',SIN:'싱가포르',GUM:'괌',SYD:'시드니',LAX:'로스앤젤레스',CDG:'파리',LHR:'런던'};
+  const aliases={FUK:'후쿠오카',MFM:'마카오',NRT:'도쿄',HND:'도쿄',KIX:'오사카',CTS:'삿포로',OKA:'오키나와',TPE:'타이베이',HKG:'홍콩',BKK:'방콕',DAD:'다낭',SGN:'호치민',HAN:'하노이',SIN:'싱가포르',GUM:'괌',SYD:'시드니',LAX:'로스앤젤레스',CDG:'파리',LHR:'런던'};
   const city=aliases[String(destination.toCity||'').toUpperCase()]||String(destination.cityName||'').replace(/[()]/g,'').trim();
   if(!city||city.length>30)throw Error('목적지 이름을 확인할 수 없습니다.');
   const query=city+(Number(stage)===1?' 숙소 교통 여행 후기':' 일정 맛집 관광 여행 후기');
