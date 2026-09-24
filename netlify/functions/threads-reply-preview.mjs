@@ -36,7 +36,7 @@ async function blogCandidates(){
   const id=Netlify.env.get('NAVER_CLIENT_ID');
   const secret=Netlify.env.get('NAVER_CLIENT_SECRET');
   if(!id||!secret) return {ok:false,error:'NAVER API 설정 없음',items:[]};
-  const query=new URLSearchParams({query:'후쿠오카 여행',display:'10',start:'1',sort:'date'});
+  const query=new URLSearchParams({query:'후쿠오카 여행',display:'30',start:'1',sort:'date'});
   const r=await fetch('https://naverapihub.apigw.ntruss.com/search/v1/blog?'+query,{
     headers:{'X-NCP-APIGW-API-KEY-ID':id,'X-NCP-APIGW-API-KEY':secret}
   });
