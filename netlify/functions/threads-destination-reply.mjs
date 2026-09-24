@@ -1,5 +1,4 @@
 import { getStore } from '@netlify/blobs';
-import { selectReplyBlog } from './_naver-reply-link.mjs';
 
 function hash(s){
   let h=0;
@@ -282,7 +281,9 @@ export default async()=>{
   let posted=0;
   for(const item of queue){
     if(posted>=3) break;
-    if(item.status!=='pending'||Date.parse(item.dueAt)>now) continue;
+    if(item.toCity==='FUK' && (item.status!=='approved'||!item.source?.url)) continue;
+    if(item.toCity!=='FUK' && item.status!=='pending') continue;
+    if(Date.parse(item.dueAt)>now) continue;
     if(!item.rootPostId||![1,2].includes(Number(item.stage))){
       item.status='needs_review';
       item.error='Invalid reply queue item';
@@ -301,11 +302,7 @@ export default async()=>{
     try{
       let message=replyText(item);
       if(item.toCity==='FUK'){
-        const first=queue.find(x=>x.rootPostId===item.rootPostId&&Number(x.stage)===1);
-        const source=await selectReplyBlog(item.stage,Number(item.stage)===2?first?.source:null);
-        if(!source)throw new Error('게시할 개인 여행 후기 링크를 찾지 못했습니다.');
-        item.source=source;
-        await store.setJSON('threads-reply-queue',queue.slice(-300));
+        const source=item.source;
         message=[
           Number(item.stage)===1?'🇯🇵 후쿠오카 숙소·이동 여행 후기':'🇯🇵 후쿠오카 일정·먹거리 여행 후기',
           source.title,
