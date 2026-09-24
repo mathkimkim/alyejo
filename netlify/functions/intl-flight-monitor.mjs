@@ -37,11 +37,25 @@ async function saveMonitorRun(run){
   await store.setJSON('monitor-runs',runs);
 }
 
-async function queueThreadsReply(item){
+async function queueThreadsReplies(posted,flight){
+  const rootPostId=String(posted?.id||'');
+  if(!rootPostId) throw new Error('Threads 원글 ID가 없어 답글을 예약할 수 없습니다.');
   let queue=await store.get('threads-reply-queue',{type:'json'});
   queue=Array.isArray(queue)?queue:[];
-  if(queue.some(x=>x.id===item.id)) return;
-  queue.push(item);
+  const postedAt=Date.now();
+  for(const [stage,delayMinutes] of [[1,15],[2,25]]){
+    const id=rootPostId+':'+stage;
+    if(queue.some(x=>x.id===id)) continue;
+    queue.push({
+      id,stage,rootPostId,status:'pending',
+      dueAt:new Date(postedAt+delayMinutes*60000).toISOString(),
+      createdAt:new Date(postedAt).toISOString(),
+      toCity:flight.toCity,cityName:flight.cityName,
+      countryName:flight.countryName||'',
+      fromCity:flight.fromCity,departureDate:flight.departureDate,
+      returnDate:flight.returnDate,totalPrice:flight.totalPrice
+    });
+  }
   await store.setJSON('threads-reply-queue',queue.slice(-300));
 }
 
@@ -397,7 +411,12 @@ export default async()=>{
         };
         threadsPosted=[item,...threadsPosted].slice(0,300);
         threadsPostedSet.add(key);
-        // 자동 답글은 사용하지 않습니다.
+        try{
+          await queueThreadsReplies(result,best);
+        }catch(queueError){
+          run.errorCount++;
+          console.error('threads-reply-queue',result?.id||'',queueError);
+        }
 
         run.threadsCount++;
         run.threadsPosts.push({
