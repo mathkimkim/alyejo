@@ -70,6 +70,18 @@ export default async function(req){
     const links=body.links;
     if(!Array.isArray(links)||links.length!==2||remaining.some(x=>x.status!=='awaiting_approval'||!x.source?.url||x.source.url!==links[Number(x.stage)-1]))
       return Response.json({error:'화면에 표시된 링크가 현재 승인 대기 링크와 다릅니다. 새로고침 후 확인하세요.'},{status:409});
+    const history=await store.get('threads-reply-used-urls',{type:'json'});
+    const occupied=new Set(Array.isArray(history)?history:[]);
+    for(const entry of queue){
+      if(entry.rootPostId===String(body.rootPostId||''))continue;
+      if(['awaiting_approval','approved','posting','posted','needs_review'].includes(entry.status)){
+        if(entry.source?.url)occupied.add(entry.source.url);
+        if(entry.usedBlogUrl)occupied.add(entry.usedBlogUrl);
+      }
+    }
+    const proposed=remaining.map(x=>x.source.url);
+    if(new Set(proposed).size!==proposed.length||proposed.some(url=>occupied.has(url)))
+      return Response.json({error:'이전에 사용했거나 다른 답글에서 준비 중인 링크가 있습니다. 링크 준비/새로 찾기를 눌러주세요.'},{status:409});
     for(const item of remaining){item.source={url:item.source.url,title:item.source.title};item.status='approved';item.approvedAt=new Date().toISOString()}
   }else if(body.action==='reject'){
     if(remaining.some(x=>!['pending','awaiting_approval','rejected'].includes(x.status)))
