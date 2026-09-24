@@ -1,3 +1,4 @@
+import { filterTravelBlogs } from './_naver-blog-filter.mjs';
 function clean(s=''){
   return String(s).replace(/<[^>]*>/g,'').replace(/&quot;/g,'"').replace(/&amp;/g,'&').replace(/&lt;/g,'<').replace(/&gt;/g,'>').trim();
 }
@@ -22,7 +23,8 @@ export default async(req)=>{
       rank:i+1,title:clean(x.title),description:clean(x.description),
       bloggerName:clean(x.bloggername||''),postDate:x.postdate||'',link:x.link||''
     }));
-    return Response.json({ok:true,query:q,sort,total:j.total||0,count:items.length,items});
+    const {kept,excluded}=filterTravelBlogs(items);
+    return Response.json({ok:true,query:q,sort,total:j.total||0,rawCount:items.length,count:kept.length,items:kept,excluded});
   }catch(e){return Response.json({ok:false,error:String(e?.message||e)},{status:500})}
 };
 export const config={path:'/api/naver-blog-test'};
