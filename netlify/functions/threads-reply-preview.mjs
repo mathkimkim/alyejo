@@ -1,3 +1,4 @@
+import { filterTravelBlogs } from './_naver-blog-filter.mjs';
 const SAMPLE = {
   city:'후쿠오카', origin:'인천', departureDate:'2026-10-15',
   returnDate:'2026-10-18', price:189000
@@ -41,9 +42,12 @@ async function blogCandidates(){
   });
   if(!r.ok) return {ok:false,status:r.status,items:[]};
   const j=await r.json();
-  return {ok:true,total:j.total||0,items:(j.items||[]).slice(0,5).map(x=>({
-    title:clean(x.title),date:x.postdate||'',link:x.link||''
-  }))};
+  const candidates=(j.items||[]).map(x=>({
+    title:clean(x.title),description:clean(x.description),
+    bloggerName:clean(x.bloggername||''),date:x.postdate||'',link:x.link||''
+  }));
+  const {kept,excluded}=filterTravelBlogs(candidates);
+  return {ok:true,total:j.total||0,items:kept.slice(0,5),excludedCount:excluded.length};
 }
 
 
@@ -68,7 +72,7 @@ function previewPage(result){
   return '<!doctype html><html lang="ko"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">'+
     '<title>후쿠오카 Threads 답글 미리보기</title><style>body{font:16px/1.65 system-ui,sans-serif;max-width:780px;margin:0 auto;padding:24px;color:#172336;background:#f5f7fb}section{background:white;border-radius:16px;padding:20px;margin:20px 0;box-shadow:0 2px 12px #15203412}pre{white-space:pre-wrap;font:inherit}a{color:#075bad;overflow-wrap:anywhere}small{color:#667}</style>'+
     '<h1>후쿠오카 답글 미리보기</h1><p>'+html(result.note)+'</p><p>게시 상태: 미리보기 · 실제 Threads 게시 없음</p>'+
-    cards+'<section><h2>네이버 블로그 검색 후보</h2><p>글 내용을 검증하거나 답글에 자동으로 인용하지 않았습니다. 제목을 누르면 새 탭에서 열립니다.</p>'+
+    cards+'<section><h2>네이버 블로그 검색 후보</h2><p>여행 예약업체 운영 블로그를 제외한 검색 후보입니다. 제목을 누르면 새 탭에서 열립니다. 글 내용은 답글에 자동 인용하지 않았습니다.</p>'+
     (links?'<ol>'+links+'</ol>':'<p>표시할 검색 결과가 없습니다.</p>')+'</section></html>';
 }
 
