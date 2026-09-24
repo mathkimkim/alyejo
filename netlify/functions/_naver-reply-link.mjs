@@ -39,5 +39,5 @@ export async function selectReplyBlog(stage,other){
   const sales=/(예약|특가|할인|패키지|투어|판매|쿠폰|구매)/;
   const choice=kept.find(x=>x.link&&x.link!==excludedUrl&&blogId(x.link)!==excludedId&&
     category.test(x.title+' '+x.description)&&!sales.test(x.title));
-  return choice?{url:choice.link,title:choice.title,bloggerName:choice.bloggerName,postDate:choice.postDate,query}:null;
+  return choice?{url:choice.link,title:choice.title,bloggerName:choice.bloggerName,postDate:choice.postDate,description:choice.description,query}:null;
 }
