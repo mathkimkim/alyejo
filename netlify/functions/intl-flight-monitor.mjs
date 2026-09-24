@@ -47,7 +47,7 @@ async function queueThreadsReplies(posted,flight){
     const id=rootPostId+':'+stage;
     if(queue.some(x=>x.id===id)) continue;
     queue.push({
-      id,stage,rootPostId,status:'pending',
+      id,stage,rootPostId,status:flight.toCity==='FUK'?'awaiting_approval':'pending',
       dueAt:new Date(postedAt+delayMinutes*60000).toISOString(),
       createdAt:new Date(postedAt).toISOString(),
       toCity:flight.toCity,cityName:flight.cityName,
