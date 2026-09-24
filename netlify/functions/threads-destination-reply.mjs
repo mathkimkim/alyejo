@@ -274,6 +274,17 @@ export default async()=>{
   const store=getStore({name:'intl-flight-alert',consistency:'strong'});
   let queue=await store.get('threads-reply-queue',{type:'json'});
   queue=Array.isArray(queue)?queue:[];
+  // Keep only the first posted URL while a second reply still needs a distinct blog.
+  let cleaned=false;
+  for(const item of queue){
+    if(item.status==='rejected'&&item.source){delete item.source;cleaned=true;continue}
+    if(item.status!=='posted'||!item.source)continue;
+    const second=queue.find(x=>x.rootPostId===item.rootPostId&&Number(x.stage)===2);
+    if(Number(item.stage)===1&&second&&second.status!=='posted'&&second.status!=='rejected'){
+      if(Object.keys(item.source).some(k=>k!=='url')){item.source={url:item.source.url};cleaned=true}
+    }else{delete item.source;cleaned=true}
+  }
+  if(cleaned)await store.setJSON('threads-reply-queue',queue.slice(-300));
   const token=Netlify.env.get('THREADS_ACCESS_TOKEN')||'';
   if(!token) return;
 
@@ -310,6 +321,12 @@ export default async()=>{
       item.status='posted';
       item.replyId=result.id;
       item.postedAt=new Date().toISOString();
+      if(Number(item.stage)===1){item.source={url:item.source.url}}
+      else{
+        delete item.source;
+        const first=queue.find(x=>x.rootPostId===item.rootPostId&&Number(x.stage)===1);
+        if(first?.status==='posted')delete first.source;
+      }
       posted++;
       await store.setJSON('threads-reply-queue',queue.slice(-300));
     }catch(e){
