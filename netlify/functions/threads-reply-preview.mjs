@@ -1,4 +1,5 @@
 import { filterTravelBlogs } from './_naver-blog-filter.mjs';
+import { selectReplyBlog } from './_naver-reply-link.mjs';
 const SAMPLE = {
   city:'후쿠오카', origin:'인천', departureDate:'2026-10-15',
   returnDate:'2026-10-18', price:189000
@@ -84,18 +85,16 @@ function sourceDraft(items){
 }
 
 function previewPage(result){
-  const cards=[
-    ['1차 답글 · 가격·숙소·이동·예약',result.replies.first],
-    ['2차 답글 · 일정·먹거리·관광·근교',result.replies.second]
-  ].map(([title,body])=>'<section><h2>'+html(title)+'</h2><pre>'+html(body)+'</pre></section>').join('');
   const links=(result.blogSearch.items||[]).map(x=>{
     const url=blogUrl(x.link);
     return url?'<li>['+((result.blogSearch.items||[]).indexOf(x)+1)+'] <a href="'+html(url)+'" target="_blank" rel="noopener noreferrer">'+html(x.title||url)+'</a> <small>'+html(x.date)+'</small></li>':'';
   }).join('');
+  const selected=[['1차 답글 · 숙소·이동',result.replyLinks.first],['2차 답글 · 일정·먹거리',result.replyLinks.second]]
+    .map(([label,x])=>'<p><strong>'+html(label)+'</strong><br>'+(x?'<a href="'+html(blogUrl(x.url))+'" target="_blank" rel="noopener noreferrer">'+html(x.title)+'</a><br>'+html(x.url):'선택 가능한 개인 여행 후기 없음')+'</p>').join('');
   return '<!doctype html><html lang="ko"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">'+
     '<title>후쿠오카 Threads 답글 미리보기</title><style>body{font:16px/1.65 system-ui,sans-serif;max-width:780px;margin:0 auto;padding:24px;color:#172336;background:#f5f7fb}section{background:white;border-radius:16px;padding:20px;margin:20px 0;box-shadow:0 2px 12px #15203412}pre{white-space:pre-wrap;font:inherit}a{color:#075bad;overflow-wrap:anywhere}small{color:#667}</style>'+
     '<h1>후쿠오카 답글 미리보기</h1><p>'+html(result.note)+'</p><p>게시 상태: 미리보기 · 실제 Threads 게시 없음</p>'+
-    cards+'<section><h2>검색 요약 기반 2차 답글 초안</h2><pre>'+html(result.sourceDraft.text)+'</pre></section><section><h2>네이버 블로그 검색 후보</h2><p>여행 예약업체 운영 블로그를 제외한 검색 후보입니다. 제목을 누르면 새 탭에서 열립니다. 글 내용은 답글에 자동 인용하지 않았습니다.</p>'+
+    '<section><h2>실제 답글에 사용할 블로그 링크 후보</h2><p>게시 시점에 다시 검색하므로 링크가 바뀔 수 있습니다.</p>'+selected+'</section><section><h2>네이버 블로그 검색 후보</h2><p>여행 예약업체 운영 블로그를 제외한 검색 후보입니다. 제목을 누르면 새 탭에서 열립니다. 글 내용은 답글에 자동 인용하지 않았습니다.</p>'+
     (links?'<ol>'+links+'</ol>':'<p>표시할 검색 결과가 없습니다.</p>')+'</section></html>';
 }
 
@@ -119,9 +118,15 @@ export default async function(req){
   let sources;
   try{ sources=await blogCandidates(); }
   catch(e){ sources={ok:false,error:String(e?.message||e),items:[]}; }
+  let firstLink=null,secondLink=null,linkError='';
+  try{
+    firstLink=await selectReplyBlog(1,null);
+    if(firstLink)secondLink=await selectReplyBlog(2,firstLink);
+  }catch(e){linkError=String(e?.message||e);}
+  const replyLinks={first:firstLink,second:secondLink,error:linkError};
   const draft=sourceDraft(sources.items||[]);
   const result={
-    sourceDraft:draft,
+    sourceDraft:draft,replyLinks,
     ok:true,mode:'preview',published:false,sample,
     note:sample?'예시 항공권 데이터입니다. 실제 가격이 아닙니다.':'입력한 항공권 데이터로 만든 미리보기입니다.',
     flight:data,replies,blogSearch:sources
