@@ -17,7 +17,7 @@ function blogId(url){
   catch{return ''}
 }
 
-export async function selectReplyBlog(stage,other,destination={toCity:'FUK',cityName:'후쿠오카'}){
+export async function selectReplyBlog(stage,other,destination={toCity:'FUK',cityName:'후쿠오카'},excludedUrls=[]){
   const id=Netlify.env.get('NAVER_CLIENT_ID');
   const secret=Netlify.env.get('NAVER_CLIENT_SECRET');
   if(!id||!secret)throw Error('NAVER API 환경변수 없음');
@@ -38,9 +38,10 @@ export async function selectReplyBlog(stage,other,destination={toCity:'FUK',city
   const {kept}=filterTravelBlogs(rows);
   const excludedUrl=other?.url||'';
   const excludedId=blogId(excludedUrl);
+  const used=new Set(excludedUrls.map(safeBlogUrl).filter(Boolean));
   const category=Number(stage)===1?/(숙소|호텔|교통|공항|하카타|텐진)/:/(일정|맛집|관광|다자이후|유후인|라멘|오호리)/;
   const sales=/(예약|특가|할인|패키지|투어|판매|쿠폰|구매)/;
-  const choice=kept.find(x=>x.link&&x.link!==excludedUrl&&blogId(x.link)!==excludedId&&
+  const choice=kept.find(x=>x.link&&x.link!==excludedUrl&&!used.has(x.link)&&blogId(x.link)!==excludedId&&
     (x.title+' '+x.description).includes(city)&&category.test(x.title+' '+x.description)&&!sales.test(x.title));
   return choice?{url:choice.link,title:choice.title,bloggerName:choice.bloggerName,postDate:choice.postDate,description:choice.description,query}:null;
 }
