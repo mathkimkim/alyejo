@@ -215,38 +215,31 @@ async function secondReplyLive(item){
 function firstReply(item){
   const city=item.cityName||item.toCity;
   const {tip,guide}=guideFor(item);
+  const price=Number(item.totalPrice);
   return [
-    `${tip.flag} ${city} 가기 전에 먼저 체크할 3가지`,
+    `${tip.flag} ${city} 항공권 예약 전 체크`,
     '',
-    '🚇 공항 → 시내',
-    guide.transit,
+    Number.isFinite(price)&&price>0?'💰 왕복 '+price.toLocaleString('ko-KR')+'원 · 결제 단계의 최종 금액을 다시 확인하세요.':'💰 결제 단계의 최종 금액을 확인하세요.',
     '',
-    '🏨 숙소 어디에?',
-    guide.stay,
-    '',
-    '⚠️ 목적지 팁',
-    guide.extra,
-    '',
-    '항공권 예약 전에는 실제 예약화면에서 수하물 · 출도착 공항 · 변경/취소 조건을 꼭 확인하세요.'
+    '🏨 숙소: '+guide.stay,
+    '🚇 이동: '+guide.transit,
+    '✅ 수하물 · 출도착 시각 · 변경/취소 조건을 예약 전에 확인하세요.'
   ].join('\n');
 }
 
 function secondReply(item){
   const city=item.cityName||item.toCity;
-  const {tip}=guideFor(item);
+  const {tip,guide}=guideFor(item);
+  const itinerary=tripDays(item)>=5?guide.long:guide.short;
   return [
-    `📌 ${city} 출발 전에 추가로 체크할 3가지`,
+    `${tip.flag} ${city} 일정 아이디어`,
     '',
-    '🌦️ 날씨·옷차림',
-    '여행 날짜가 가까워지면 현지 예보를 확인하고, 먼 일정이라면 해당 시기의 평년 기후를 참고하세요.',
+    '🗓️ 일정: '+itinerary,
+    '🍜 먹거리: '+tip.food,
+    '📍 관광: '+tip.spots,
+    '🚃 근교: '+tip.nearby,
     '',
-    '💴 환율·결제',
-    '출발 전 최신 환율을 확인하고 카드 사용이 어려운 곳에 대비해 소액 현금도 준비해두면 편해요.',
-    '',
-    '📅 현지 연휴·행사',
-    '여행기간과 현지 공휴일·축제·대형행사가 겹치는지 확인하세요. 숙박비와 교통 혼잡에 영향을 줄 수 있어요.',
-    '',
-    `${tip.flag} 실제 날씨·환율·행사 정보는 출발 전에 최신 정보로 다시 확인하세요.`
+    '운영시간과 교통편은 여행 날짜에 맞춰 확인하세요.'
   ].join('\n');
 }
 
@@ -281,17 +274,44 @@ export default async()=>{
   const store=getStore({name:'intl-flight-alert',consistency:'strong'});
   let queue=await store.get('threads-reply-queue',{type:'json'});
   queue=Array.isArray(queue)?queue:[];
-  const now=new Date().toISOString();
-  let cancelled=0;
+  const token=Netlify.env.get('THREADS_ACCESS_TOKEN')||'';
+  if(!token) return;
+
+  const now=Date.now();
+  let posted=0;
   for(const item of queue){
-    if(item.status==='pending'){
-      item.status='cancelled';
-      item.cancelledAt=now;
-      item.cancelReason='all_threads_replies_disabled';
-      cancelled++;
+    if(posted>=3) break;
+    if(item.status!=='pending'||Date.parse(item.dueAt)>now) continue;
+    if(!item.rootPostId||![1,2].includes(Number(item.stage))){
+      item.status='needs_review';
+      item.error='Invalid reply queue item';
+      continue;
+    }
+    if(Number(item.stage)===2){
+      const first=queue.find(x=>x.rootPostId===item.rootPostId&&Number(x.stage)===1);
+      if(!first||first.status!=='posted') continue;
+    }
+
+    // Record the claim before the external publish call. An uncertain result is
+    // kept for manual review, so a retry cannot silently create a second reply.
+    item.status='posting';
+    item.startedAt=new Date().toISOString();
+    await store.setJSON('threads-reply-queue',queue.slice(-300));
+    try{
+      const result=await postReply(item.rootPostId,replyText(item),token);
+      if(!result?.id) throw new Error('Threads did not return a reply ID');
+      item.status='posted';
+      item.replyId=result.id;
+      item.postedAt=new Date().toISOString();
+      posted++;
+      await store.setJSON('threads-reply-queue',queue.slice(-300));
+    }catch(e){
+      item.status='needs_review';
+      item.error=String(e?.message||e).slice(0,300);
+      item.failedAt=new Date().toISOString();
+      await store.setJSON('threads-reply-queue',queue.slice(-300));
+      console.error('threads-reply-needs-review',item.id,item.error);
     }
   }
-  await store.setJSON('threads-reply-queue',queue.slice(-300));
-  console.log('threads-replies-disabled',{cancelled});
 };
 export const config={schedule:'*/5 * * * *'};
