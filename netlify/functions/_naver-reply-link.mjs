@@ -17,11 +17,14 @@ function blogId(url){
   catch{return ''}
 }
 
-export async function selectReplyBlog(stage,other){
+export async function selectReplyBlog(stage,other,destination={toCity:'FUK',cityName:'후쿠오카'}){
   const id=Netlify.env.get('NAVER_CLIENT_ID');
   const secret=Netlify.env.get('NAVER_CLIENT_SECRET');
   if(!id||!secret)throw Error('NAVER API 환경변수 없음');
-  const query=Number(stage)===1?'후쿠오카 숙소 교통 여행 후기':'후쿠오카 일정 맛집 관광 여행 후기';
+  const aliases={FUK:'후쿠오카',NRT:'도쿄',HND:'도쿄',KIX:'오사카',CTS:'삿포로',OKA:'오키나와',TPE:'타이베이',HKG:'홍콩',BKK:'방콕',DAD:'다낭',SGN:'호치민',HAN:'하노이',SIN:'싱가포르',GUM:'괌',SYD:'시드니',LAX:'로스앤젤레스',CDG:'파리',LHR:'런던'};
+  const city=aliases[String(destination.toCity||'').toUpperCase()]||String(destination.cityName||'').replace(/[()]/g,'').trim();
+  if(!city||city.length>30)throw Error('목적지 이름을 확인할 수 없습니다.');
+  const query=city+(Number(stage)===1?' 숙소 교통 여행 후기':' 일정 맛집 관광 여행 후기');
   const params=new URLSearchParams({query,display:'30',start:'1',sort:'date'});
   const response=await fetch('https://naverapihub.apigw.ntruss.com/search/v1/blog?'+params,{
     headers:{'X-NCP-APIGW-API-KEY-ID':id,'X-NCP-APIGW-API-KEY':secret}
@@ -38,6 +41,6 @@ export async function selectReplyBlog(stage,other){
   const category=Number(stage)===1?/(숙소|호텔|교통|공항|하카타|텐진)/:/(일정|맛집|관광|다자이후|유후인|라멘|오호리)/;
   const sales=/(예약|특가|할인|패키지|투어|판매|쿠폰|구매)/;
   const choice=kept.find(x=>x.link&&x.link!==excludedUrl&&blogId(x.link)!==excludedId&&
-    category.test(x.title+' '+x.description)&&!sales.test(x.title));
+    (x.title+' '+x.description).includes(city)&&category.test(x.title+' '+x.description)&&!sales.test(x.title));
   return choice?{url:choice.link,title:choice.title,bloggerName:choice.bloggerName,postDate:choice.postDate,description:choice.description,query}:null;
 }
