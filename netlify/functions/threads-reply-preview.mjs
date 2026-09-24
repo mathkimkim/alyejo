@@ -94,7 +94,7 @@ function previewPage(result){
   return '<!doctype html><html lang="ko"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">'+
     '<title>후쿠오카 Threads 답글 미리보기</title><style>body{font:16px/1.65 system-ui,sans-serif;max-width:780px;margin:0 auto;padding:24px;color:#172336;background:#f5f7fb}section{background:white;border-radius:16px;padding:20px;margin:20px 0;box-shadow:0 2px 12px #15203412}pre{white-space:pre-wrap;font:inherit}a{color:#075bad;overflow-wrap:anywhere}small{color:#667}</style>'+
     '<h1>후쿠오카 답글 미리보기</h1><p>'+html(result.note)+'</p><p>게시 상태: 미리보기 · 실제 Threads 게시 없음</p>'+
-    '<section><h2>실제 답글에 사용할 블로그 링크 후보</h2><p>게시 시점에 다시 검색하므로 링크가 바뀔 수 있습니다.</p>'+selected+'</section><section><h2>네이버 블로그 검색 후보</h2><p>여행 예약업체 운영 블로그를 제외한 검색 후보입니다. 제목을 누르면 새 탭에서 열립니다. 글 내용은 답글에 자동 인용하지 않았습니다.</p>'+
+    '<section><h2>샘플 블로그 링크 후보</h2><p>이 화면은 예시입니다. 실제 원글의 답글 링크는 승인 화면에서 준비·확정합니다. 승인 전에는 게시되지 않습니다.</p>'+selected+'</section><section><h2>네이버 블로그 검색 후보</h2><p>여행 예약업체 운영 블로그를 제외한 검색 후보입니다. 제목을 누르면 새 탭에서 열립니다. 글 내용은 답글에 자동 인용하지 않았습니다.</p>'+
     (links?'<ol>'+links+'</ol>':'<p>표시할 검색 결과가 없습니다.</p>')+'</section></html>';
 }
 
