@@ -1,4 +1,5 @@
 import { getStore } from '@netlify/blobs';
+import webpush from 'web-push';
 
 function hash(s){
   let h=0;
@@ -292,6 +293,38 @@ export default async()=>{
     }else{delete item.source;cleaned=true}
   }
   if(cleaned)await store.setJSON('threads-reply-queue',queue.slice(-300));
+  const subscriptions=await store.get('threads-reply-admin-push',{type:'json'});
+  let subscribers=Array.isArray(subscriptions)?subscriptions:[];
+  const pub=Netlify.env.get('VAPID_PUBLIC_KEY');
+  const priv=Netlify.env.get('VAPID_PRIVATE_KEY');
+  if(subscribers.length&&pub&&priv){
+    webpush.setVapidDetails(Netlify.env.get('VAPID_SUBJECT')||'mailto:owner@example.com',pub,priv);
+    const roots=[...new Set(queue.filter(x=>x.status==='awaiting_approval'&&!x.approvalNotifiedAt).map(x=>x.rootPostId))].slice(0,10);
+    for(const root of roots){
+      const items=queue.filter(x=>x.rootPostId===root&&x.status==='awaiting_approval');
+      const first=items[0];
+      let sent=false;
+      for(const sub of [...subscribers]){
+        try{
+          await webpush.sendNotification(sub,JSON.stringify({
+            title:'✈️ 항공권 답글 승인 대기',
+            body:(first.cityName||first.toCity||'새 항공권')+' 원글의 블로그 답글을 확인해주세요.',
+            tag:'reply-approval-'+root
+          }));
+          sent=true;
+        }catch(err){
+          if([404,410].includes(err?.statusCode)){
+            subscribers=subscribers.filter(x=>x.endpoint!==sub.endpoint);
+            await store.setJSON('threads-reply-admin-push',subscribers);
+          }else console.error('reply-approval-push',root,err);
+        }
+      }
+      if(sent){
+        for(const item of items)item.approvalNotifiedAt=new Date().toISOString();
+        await store.setJSON('threads-reply-queue',queue.slice(-300));
+      }
+    }
+  }
   const token=Netlify.env.get('THREADS_ACCESS_TOKEN')||'';
   if(!token) return;
 
