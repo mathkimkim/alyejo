@@ -1,4 +1,5 @@
 import { getStore } from '@netlify/blobs';
+import { selectReplyBlog } from './_naver-reply-link.mjs';
 
 function hash(s){
   let h=0;
@@ -298,7 +299,20 @@ export default async()=>{
     item.startedAt=new Date().toISOString();
     await store.setJSON('threads-reply-queue',queue.slice(-300));
     try{
-      const result=await postReply(item.rootPostId,replyText(item),token);
+      let message=replyText(item);
+      if(item.toCity==='FUK'){
+        const first=queue.find(x=>x.rootPostId===item.rootPostId&&Number(x.stage)===1);
+        const source=await selectReplyBlog(item.stage,Number(item.stage)===2?first?.source:null);
+        if(!source)throw new Error('게시할 개인 여행 후기 링크를 찾지 못했습니다.');
+        item.source=source;
+        await store.setJSON('threads-reply-queue',queue.slice(-300));
+        message=[
+          Number(item.stage)===1?'🇯🇵 후쿠오카 숙소·이동 여행 후기':'🇯🇵 후쿠오카 일정·먹거리 여행 후기',
+          source.title,
+          source.url
+        ].join('\n');
+      }
+      const result=await postReply(item.rootPostId,message,token);
       if(!result?.id) throw new Error('Threads did not return a reply ID');
       item.status='posted';
       item.replyId=result.id;
