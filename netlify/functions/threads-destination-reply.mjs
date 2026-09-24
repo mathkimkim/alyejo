@@ -274,6 +274,13 @@ export default async()=>{
   const store=getStore({name:'intl-flight-alert',consistency:'strong'});
   let queue=await store.get('threads-reply-queue',{type:'json'});
   queue=Array.isArray(queue)?queue:[];
+  const savedHistory=await store.get('threads-reply-used-urls',{type:'json'});
+  const usedUrls=new Set(Array.isArray(savedHistory)?savedHistory:[]);
+  for(const entry of queue){
+    if(entry.status==='posted'&&(entry.usedBlogUrl||entry.source?.url))usedUrls.add(entry.usedBlogUrl||entry.source.url);
+  }
+  if(usedUrls.size!==(Array.isArray(savedHistory)?savedHistory.length:0))
+    await store.setJSON('threads-reply-used-urls',[...usedUrls]);
   // Keep only the first posted URL while a second reply still needs a distinct blog.
   let cleaned=false;
   for(const item of queue){
@@ -321,6 +328,7 @@ export default async()=>{
       item.status='posted';
       item.replyId=result.id;
       item.postedAt=new Date().toISOString();
+      item.usedBlogUrl=item.source.url;
       if(Number(item.stage)===1){item.source={url:item.source.url}}
       else{
         delete item.source;
@@ -329,6 +337,11 @@ export default async()=>{
       }
       posted++;
       await store.setJSON('threads-reply-queue',queue.slice(-300));
+      if(!usedUrls.has(item.usedBlogUrl)){
+        usedUrls.add(item.usedBlogUrl);
+        try{await store.setJSON('threads-reply-used-urls',[...usedUrls])}
+        catch(historyError){console.error('reply-url-history-save-failed',historyError)}
+      }
     }catch(e){
       item.status='needs_review';
       item.error=String(e?.message||e).slice(0,300);
