@@ -3,7 +3,7 @@ const SAMPLE = {
   returnDate:'2026-10-18', price:189000
 };
 
-function dateOK(s){ return /^\\d{4}-\\d{2}-\\d{2}$/.test(s) && !Number.isNaN(new Date(s+'T00:00:00Z').getTime()); }
+function dateOK(s){ return /^\d{4}-\d{2}-\d{2}$/.test(s) && !Number.isNaN(new Date(s+'T00:00:00Z').getTime()); }
 function won(n){ return Number(n).toLocaleString('ko-KR')+'원'; }
 function clean(s){ return String(s||'').replace(/<[^>]*>/g,'').replace(/&(?:quot|#34);/g,'"').replace(/&amp;/g,'&').replace(/&lt;/g,'<').replace(/&gt;/g,'>').trim(); }
 
@@ -19,7 +19,7 @@ export function buildPreview(data){
     '🏨 숙소: 공항·기차 이동이 중요하면 하카타, 쇼핑과 저녁 일정 중심이면 텐진을 비교해보세요.',
     '🚇 이동: 공항에서 시내까지의 교통편과 숙소까지의 마지막 구간을 함께 확인하세요.',
     '✅ 예약 전: 수하물, 출도착 시각, 변경·취소 조건을 확인하세요.'
-  ].join('\\n');
+  ].join('\n');
   const second = [
     '🇯🇵 '+city+' 여행 일정 아이디어',
     '',
@@ -27,7 +27,7 @@ export function buildPreview(data){
     '🍜 먹거리: 하카타 라멘, 모츠나베, 멘타이코를 취향에 맞춰 골라보세요.',
     '📍 관광: 캐널시티·오호리공원·모모치 해변의 이동 동선을 비교해보세요.',
     '🚃 근교: 여유가 있다면 다자이후를 넣고, 유후인은 왕복 이동시간과 좌석 예약을 먼저 확인하세요.'
-  ].join('\\n');
+  ].join('\n');
   return {first,second};
 }
 
