@@ -10,7 +10,7 @@ export default async(req)=>{
     const u=new URL(req.url);
     const q=(u.searchParams.get('q')||'후쿠오카 여행').slice(0,100);
     const sort=u.searchParams.get('sort')==='sim'?'sim':'date';
-    const params=new URLSearchParams({query:q,display:'10',start:'1',sort,format:'json'});
+    const params=new URLSearchParams({query:q,display:'30',start:'1',sort,format:'json'});
     const r=await fetch('https://naverapihub.apigw.ntruss.com/search/v1/blog?'+params,{
       headers:{
         'X-NCP-APIGW-API-KEY-ID':clientId,
@@ -24,7 +24,7 @@ export default async(req)=>{
       bloggerName:clean(x.bloggername||''),postDate:x.postdate||'',link:x.link||''
     }));
     const {kept,excluded}=filterTravelBlogs(items);
-    return Response.json({ok:true,query:q,sort,total:j.total||0,rawCount:items.length,count:kept.length,items:kept,excluded});
+    return Response.json({ok:true,query:q,sort,total:j.total||0,rawCount:items.length,count:Math.min(kept.length,5),items:kept.slice(0,5),excluded});
   }catch(e){return Response.json({ok:false,error:String(e?.message||e)},{status:500})}
 };
 export const config={path:'/api/naver-blog-test'};
