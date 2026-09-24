@@ -47,10 +47,19 @@ export default async function(req){
   if(body.action==='prepare'){
     if(remaining.some(x=>!['pending','awaiting_approval','rejected'].includes(x.status)))
       return Response.json({error:'링크를 준비할 수 없는 상태입니다.'},{status:409});
+    const history=await store.get('threads-reply-used-urls',{type:'json'});
+    const excluded=new Set(Array.isArray(history)?history:[]);
+    for(const entry of queue){
+      if(entry.rootPostId===String(body.rootPostId||''))continue;
+      if(['awaiting_approval','approved','posting','posted','needs_review'].includes(entry.status)){
+        if(entry.source?.url)excluded.add(entry.source.url);
+        if(entry.usedBlogUrl)excluded.add(entry.usedBlogUrl);
+      }
+    }
     let first=items[0].status==='posted'?items[0].source:null,second=null;
     try{
-      if(items[0].status!=='posted')first=await selectReplyBlog(1,null,items[0]);
-      if(items[1].status!=='posted')second=await selectReplyBlog(2,first,items[1]);
+      if(items[0].status!=='posted')first=await selectReplyBlog(1,null,items[0],[...excluded]);
+      if(items[1].status!=='posted')second=await selectReplyBlog(2,first,items[1],[...excluded]);
     }catch(e){return Response.json({error:String(e?.message||e)},{status:502})}
     if((items[0].status!=='posted'&&!first)||(items[1].status!=='posted'&&!second))
       return Response.json({error:'목적지에 맞는 개인 후기 링크를 찾지 못했습니다. 이 답글은 계속 대기합니다.'},{status:422});
