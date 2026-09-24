@@ -46,6 +46,32 @@ async function blogCandidates(){
   }))};
 }
 
+
+function html(s){return String(s||'').replace(/[&<>"']/g,x=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[x]));}
+function blogUrl(raw){
+  try{
+    const u=new URL(String(raw||'').trim().replace(/^["']+|["']+$/g,''));
+    if(!['blog.naver.com','m.blog.naver.com'].includes(u.hostname))return '';
+    u.protocol='https:';
+    return u.href;
+  }catch{return ''}
+}
+function previewPage(result){
+  const cards=[
+    ['1차 답글 · 가격·숙소·이동·예약',result.replies.first],
+    ['2차 답글 · 일정·먹거리·관광·근교',result.replies.second]
+  ].map(([title,body])=>'<section><h2>'+html(title)+'</h2><pre>'+html(body)+'</pre></section>').join('');
+  const links=(result.blogSearch.items||[]).map(x=>{
+    const url=blogUrl(x.link);
+    return url?'<li><a href="'+html(url)+'" target="_blank" rel="noopener noreferrer">'+html(x.title||url)+'</a> <small>'+html(x.date)+'</small></li>':'';
+  }).join('');
+  return '<!doctype html><html lang="ko"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">'+
+    '<title>후쿠오카 Threads 답글 미리보기</title><style>body{font:16px/1.65 system-ui,sans-serif;max-width:780px;margin:0 auto;padding:24px;color:#172336;background:#f5f7fb}section{background:white;border-radius:16px;padding:20px;margin:20px 0;box-shadow:0 2px 12px #15203412}pre{white-space:pre-wrap;font:inherit}a{color:#075bad;overflow-wrap:anywhere}small{color:#667}</style>'+
+    '<h1>후쿠오카 답글 미리보기</h1><p>'+html(result.note)+'</p><p>게시 상태: 미리보기 · 실제 Threads 게시 없음</p>'+
+    cards+'<section><h2>네이버 블로그 검색 후보</h2><p>글 내용을 검증하거나 답글에 자동으로 인용하지 않았습니다. 제목을 누르면 새 탭에서 열립니다.</p>'+
+    (links?'<ol>'+links+'</ol>':'<p>표시할 검색 결과가 없습니다.</p>')+'</section></html>';
+}
+
 export default async function(req){
   if(req.method!=='GET') return Response.json({error:'Method Not Allowed'},{status:405});
   const p=new URL(req.url).searchParams;
@@ -66,10 +92,12 @@ export default async function(req){
   let sources;
   try{ sources=await blogCandidates(); }
   catch(e){ sources={ok:false,error:String(e?.message||e),items:[]}; }
-  return Response.json({
+  const result={
     ok:true,mode:'preview',published:false,sample,
     note:sample?'예시 항공권 데이터입니다. 실제 가격이 아닙니다.':'입력한 항공권 데이터로 만든 미리보기입니다.',
     flight:data,replies,blogSearch:sources
-  });
+  };
+  if(p.get('format')==='json')return Response.json(result);
+  return new Response(previewPage(result),{headers:{'Content-Type':'text/html; charset=utf-8','Cache-Control':'no-store'} });
 }
 export const config={path:'/api/threads-reply-preview'};
