@@ -1,6 +1,7 @@
 // Search metadata is only a first pass. Exact blog IDs are confirmed exclusions
 // from the Fukuoka review; provider names catch clearly branded operator blogs.
 const EXCLUDED_IDS=new Set(['wpdbsrud','tripinstyle','smile_tion','gregadam']);
+const SALES_TITLE=/(패키지|잔여\s*좌석|버스투어.{0,12}예약|특가.{0,12}예약|할인\s*코드)/i;
 const PROVIDER_NAME=/(마이리얼트립|여기어때|야놀자|트립닷컴|클룩|투어비스|하나투어|모두투어|인터파크투어|트립인스타일|myrealtrip|trip\.com|klook|yanolja)/i;
 
 export function exclusionReason(item){
@@ -13,6 +14,7 @@ export function exclusionReason(item){
   }catch{}
   if(EXCLUDED_IDS.has(id))return '운영 블로그 제외 ID';
   if(PROVIDER_NAME.test(String(item.bloggerName||item.bloggername||'')))return '여행 예약업체 블로그명';
+  if(SALES_TITLE.test(String(item.title||'')))return '예약·판매성 제목';
   return '';
 }
 
