@@ -104,7 +104,6 @@ function threadsText(group,partnerUrl,analysis){
     '📅 '+weekday,
     '',
     '✅ 두 평균보다 낮아 추천해요.',
-    '수하물·최종 결제금액은 확인해주세요.',
     '항공권 확인 👇',
     partnerUrl
   ].join('\n');
