@@ -89,21 +89,25 @@ function threadsText(group,partnerUrl,analysis){
   const departureDay=weekdays[new Date(best.departureDate+'T00:00:00Z').getUTCDay()];
   const returnDay=weekdays[new Date(best.returnDate+'T00:00:00Z').getUTCDay()];
   const shortDate=date=>Number(date.slice(5,7))+'/'+Number(date.slice(8,10));
-  const shortPrice=value=>(Number(value)/10000).toFixed(1)+'만';
-  const title='🎯 '+city+' 왕복 '+price.toLocaleString('ko-KR')+'원';
-  const dates='🗓 '+shortDate(best.departureDate)+'('+departureDay+') 출발 → '+shortDate(best.returnDate)+'('+returnDay+') 귀국';
-  const monthly='📊 '+Number(analysis.month.slice(5))+'월 평균 '+shortPrice(analysis.monthlyAverage)+' ('+analysis.monthlyCount+'일) · '+Math.abs(analysis.monthlyPercent)+'%↓';
-  const weekday='📅 '+analysis.weekdayName+'요일 평균 '+shortPrice(analysis.weekdayAverage)+' ('+analysis.weekdayCount+'일) · '+Math.abs(analysis.weekdayPercent)+'%↓';
+  const month=Number(analysis.month.slice(5));
+  const nightCount=Math.max(0,days-1);
+  const priceBand=Math.floor(price/10000)+'만 원대';
+  const beachCities=new Set(['SPN','GUM','CEB','DPS','HKT','OKA','MLE','ROR','BKI','USM']);
+  const hook=beachCities.has(best.toCity)
+    ? '🌴 '+month+'월엔 '+city+' 바다 보러 갈까요? 왕복 '+priceBand+' 떴어요'
+    : '✈️ '+month+'월엔 '+city+'로 떠나볼까요? 왕복 '+priceBand+' 떴어요';
+  const saving=Math.round((analysis.monthlyAverage-price)/10000);
+  const average=Math.round(analysis.monthlyAverage/10000);
 
   return [
-    title,
-    '✈️ '+originName(dep)+' ↔ '+city+' · '+Math.max(0,days-1)+'박 '+days+'일',
-    dates,
+    hook,
     '',
-    '📊 '+monthly,
-    '📅 '+weekday,
+    '✈️ '+originName(dep)+' ↔ '+city+' 왕복 '+price.toLocaleString('ko-KR')+'원',
+    '🗓 '+shortDate(best.departureDate)+'('+departureDay+') 출발 → '+shortDate(best.returnDate)+'('+returnDay+') 귀국 · '+nightCount+'박 '+days+'일',
     '',
-    '✅ 두 평균보다 낮아 추천해요.',
+    month+'월 같은 '+nightCount+'박 '+days+'일 평균은 약 '+average+'만 원. 이 날짜는 약 '+saving+'만 원 저렴해요.',
+    analysis.weekdayName+'요일 출발끼리 비교해도 낮은 가격이라, '+city+' 여행을 생각했다면 이 일정을 추천합니다.',
+    '',
     '항공권 확인 👇',
     partnerUrl
   ].join('\n');
