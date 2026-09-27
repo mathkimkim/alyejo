@@ -1,6 +1,7 @@
 import { getStore } from '@netlify/blobs';
 import webpush from 'web-push';
 import { discoverMrt, trackMrt, searchMrt, flightPartnerLink } from './_intl-flight-lib.mjs';
+import { calendarPriceAnalysis, isExpertRecommendation } from './_flight-price-analysis.mjs';
 
 const store=getStore({name:'intl-flight-alert',consistency:'strong'});
 const PRICE_DROP_ALERT_RATE=0.10;
@@ -72,12 +73,6 @@ function originName(code){
   return map[code]||code;
 }
 
-function threadHash(s){
-  let h=0;
-  for(const ch of String(s||'')) h=((h<<5)-h+ch.charCodeAt(0))|0;
-  return Math.abs(h);
-}
-
 function tripDays(a){
   const s=new Date(a.departureDate+'T00:00:00Z');
   const e=new Date(a.returnDate+'T00:00:00Z');
@@ -89,74 +84,42 @@ function priceBand(price){
   return man+'만원대';
 }
 
-function threadsText(group,partnerUrl){
+function threadsText(group,partnerUrl,analysis){
   const best=group[0];
   const city=best.cityName||best.toCity;
   const country=best.countryName||'';
-  const targetHit=group.some(x=>x.alertType==='target_reached');
   const dep=String(best.watch?.dep||best.fromCity||'ICN').toUpperCase();
   const price=Number(best.totalPrice);
-  const oldPrices=group.map(x=>Number(x.old?.price||0)).filter(x=>x>price);
+  const oldPrices=group.filter(x=>x.old?.departureDate===best.departureDate&&x.old?.returnDate===best.returnDate)
+    .map(x=>Number(x.old?.price||0)).filter(x=>x>price);
   const oldPrice=oldPrices.length?Math.min(...oldPrices):0;
   const diff=oldPrice?oldPrice-price:0;
-  const dropPct=oldPrice?Math.round((diff/oldPrice)*100):Math.round(Number(best.dropPercent||0));
+  const dropPct=oldPrice?Math.round((diff/oldPrice)*100):0;
   const days=tripDays(best);
-  const seed=threadHash([best.toCity,best.departureDate,best.returnDate,price].join('|'));
-
-  let titles;
-  if(targetHit){
-    titles=[
-      '🎯 기다리던 가격 나왔어요! '+city+' 왕복 '+priceBand(price),
-      '🔥 '+city+' 왕복 '+priceBand(price)+' 떴어요',
-      '✈️ '+city+' 이 가격이면 눈에 들어오네요 · 왕복 '+priceBand(price),
-      '👀 '+city+' 목표가 아래로 내려왔어요 · 왕복 '+priceBand(price)
-    ];
-  }else if(dropPct>=30){
-    titles=[
-      '🚨 이건 많이 떨어졌는데요? '+city+' 왕복 '+priceBand(price),
-      '💥 '+city+' 항공권 가격 확 떨어졌어요 · '+priceBand(price),
-      '🔥 '+city+' 왕복 '+priceBand(price)+'까지 내려왔어요',
-      '👀 '+city+' 가격 이 정도면 진짜 눈에 띄네요 · '+priceBand(price)
-    ];
-  }else if(dropPct>=20){
-    titles=[
-      '🔥 '+city+' 항공권 꽤 내려왔어요 · 왕복 '+priceBand(price),
-      '👀 '+city+' 왕복 '+priceBand(price)+' 발견',
-      '✈️ '+city+' 가격 좋아졌네요 · 왕복 '+priceBand(price),
-      '📉 '+city+' 항공권 '+dropPct+'% 내려왔어요'
-    ];
-  }else{
-    titles=[
-      '👀 '+city+' 항공권 슬슬 괜찮은 가격 나왔어요',
-      '✈️ '+city+' 왕복 '+priceBand(price)+' 나왔어요',
-      '🔥 '+city+' 항공권 '+dropPct+'% 내려왔어요',
-      '📉 '+city+' 왕복 가격 또 내려왔습니다'
-    ];
-  }
-
-  const title=titles[seed%titles.length];
-  const reactions=[
-    dropPct>=30?'이 정도 하락폭이면 한 번 확인해볼 만하네요.':'가격이 의미 있게 내려왔어요.',
-    days<=4?days+'일 일정으로 짧게 다녀오기 좋은 조건이에요.':days+'일 일정 기준으로 잡힌 가격이에요.',
-    targetHit?'설정한 목표가격 아래로 내려왔습니다.':'이전 알림 기준보다 '+dropPct+'% 저렴해졌어요.'
-  ];
-  const reaction=reactions[(seed>>2)%reactions.length];
+  const weekdays=['일','월','화','수','목','금','토'];
+  const departureDay=weekdays[new Date(best.departureDate+'T00:00:00Z').getUTCDay()];
+  const returnDay=weekdays[new Date(best.returnDate+'T00:00:00Z').getUTCDay()];
+  const title='🎯 '+city+' '+departureDay+'~'+returnDay+' '+Math.max(0,days-1)+'박 '+days+'일 왕복 '+priceBand(price)+' · 가격 기준 추천';
 
   const priceLine=oldPrice
     ? oldPrice.toLocaleString('ko-KR')+'원 → '+price.toLocaleString('ko-KR')+'원\n▼ '+diff.toLocaleString('ko-KR')+'원'+(dropPct?' · '+dropPct+'%↓':'')
     : '왕복 '+price.toLocaleString('ko-KR')+'원';
 
   const placeLine=country?'🌏 '+country+' · '+city:'🌏 '+city;
+  const averageLine='📊 '+Number(analysis.month.slice(5))+'월 같은 '+days+'일 왕복 평균 '+analysis.monthlyAverage.toLocaleString('ko-KR')+'원 ('+analysis.monthlyCount+'개 출발일)보다 '+Math.abs(analysis.monthlyPercent)+'% 낮아요';
+  const weekdayLine='📅 '+analysis.weekdayName+'요일 출발 평균 '+analysis.weekdayAverage.toLocaleString('ko-KR')+'원 ('+analysis.weekdayCount+'일)보다 '+Math.abs(analysis.weekdayPercent)+'% 낮아요';
 
   return [
     title,
     '',
-    reaction,
     priceLine,
     '',
     '✈️ '+originName(dep)+'('+dep+') ↔ '+city+'('+best.toCity+')',
     '🛫 가는 날 '+best.departureDate,
     '🛬 오는 날 '+best.returnDate+' · '+Math.max(0,days-1)+'박 '+days+'일',
+    averageLine,
+    weekdayLine,
+    '✅ 가격 기준으로 이 날짜를 추천해요. 수하물·최종 결제금액은 확인해주세요.',
     placeLine,
     '',
     '지금 가격 확인 👇',
@@ -369,12 +332,14 @@ export default async()=>{
 
   // 공개 Threads 게시 규칙:
   // - 개인 푸시 알림은 목표가 도달 OR 기준가 대비 10% 하락을 그대로 유지
-  // - 공개 Threads 글은 기준가격 대비 실제 10% 이상 하락한 경우에만 게시
+  // - 공개 Threads 글은 기준가격 대비 실제 10% 이상 하락하고,
+  //   같은 달과 같은 출발 요일 평균보다 충분히 싼 일정만 추천
   // - 목표가 도달만으로는 게시하지 않음 (100원/수천원 등 미세 하락 공개 방지)
   const threadsEligible=pending.filter(a=>Number(a.dropPercent||0)>=10);
 
   if(threadsAccessToken && threadsEligible.length){
     const threadsGroups=new Map();
+    const calendarQueries=new Map();
     for(const a of threadsEligible){
       const key=threadsEventKey(a);
       if(!threadsGroups.has(key)) threadsGroups.set(key,[]);
@@ -386,6 +351,24 @@ export default async()=>{
       try{
         const best=group[0];
         const dep=String(best.watch?.dep||best.fromCity||'ICN').toUpperCase();
+        const month=best.departureDate.slice(0,7);
+        const [year,monthNumber]=month.split('-').map(Number);
+        const end=new Date(Date.UTC(year,monthNumber,0)).toISOString().slice(0,10);
+        const period=tripDays(best);
+        const calendarKey=[dep,best.toCity,month,period].join('|');
+        if(!calendarQueries.has(calendarKey)){
+          calendarQueries.set(calendarKey,searchMrt({
+            dep,arr:best.toCity,start:month+'-01',end,period,forceFresh:true
+          }));
+        }
+        const calendar=await calendarQueries.get(calendarKey);
+        const today=new Date(Date.now()+9*60*60*1000).toISOString().slice(0,10);
+        const analysis=calendarPriceAnalysis(calendar.rows,{
+          departureDate:best.departureDate,returnDate:best.returnDate,
+          price:best.totalPrice,today
+        });
+        // 조회 시점의 가격이 어긋나거나 비교 표본이 부족하면 공개 추천을 건너뛴다.
+        if(!isExpertRecommendation(analysis,best.totalPrice)) continue;
         const partner=await flightPartnerLink({
           dep,
           arr:String(best.toCity||'').toUpperCase(),
@@ -395,7 +378,7 @@ export default async()=>{
         if(!partner?.partner || !partner?.url) throw new Error('Threads용 파트너 마이링크 생성 실패');
 
         const result=await postThreads(
-          threadsText(group,partner.url),
+          threadsText(group,partner.url,analysis),
           threadsAccessToken,
           partner.url
         );
