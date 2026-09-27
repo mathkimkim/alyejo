@@ -79,50 +79,33 @@ function tripDays(a){
   return Math.max(1,Math.round((e-s)/86400000)+1);
 }
 
-function priceBand(price){
-  const man=Math.floor(Number(price)/10000);
-  return man+'만원대';
-}
-
 function threadsText(group,partnerUrl,analysis){
   const best=group[0];
   const city=best.cityName||best.toCity;
-  const country=best.countryName||'';
   const dep=String(best.watch?.dep||best.fromCity||'ICN').toUpperCase();
   const price=Number(best.totalPrice);
-  const oldPrices=group.filter(x=>x.old?.departureDate===best.departureDate&&x.old?.returnDate===best.returnDate)
-    .map(x=>Number(x.old?.price||0)).filter(x=>x>price);
-  const oldPrice=oldPrices.length?Math.min(...oldPrices):0;
-  const diff=oldPrice?oldPrice-price:0;
-  const dropPct=oldPrice?Math.round((diff/oldPrice)*100):0;
   const days=tripDays(best);
   const weekdays=['일','월','화','수','목','금','토'];
   const departureDay=weekdays[new Date(best.departureDate+'T00:00:00Z').getUTCDay()];
   const returnDay=weekdays[new Date(best.returnDate+'T00:00:00Z').getUTCDay()];
-  const title='🎯 '+city+' '+departureDay+'~'+returnDay+' '+Math.max(0,days-1)+'박 '+days+'일 왕복 '+priceBand(price)+' · 가격 기준 추천';
-
-  const priceLine=oldPrice
-    ? oldPrice.toLocaleString('ko-KR')+'원 → '+price.toLocaleString('ko-KR')+'원\n▼ '+diff.toLocaleString('ko-KR')+'원'+(dropPct?' · '+dropPct+'%↓':'')
-    : '왕복 '+price.toLocaleString('ko-KR')+'원';
-
-  const placeLine=country?'🌏 '+country+' · '+city:'🌏 '+city;
-  const averageLine='📊 '+Number(analysis.month.slice(5))+'월 같은 '+days+'일 왕복 평균 '+analysis.monthlyAverage.toLocaleString('ko-KR')+'원 ('+analysis.monthlyCount+'개 출발일)보다 '+Math.abs(analysis.monthlyPercent)+'% 낮아요';
-  const weekdayLine='📅 '+analysis.weekdayName+'요일 출발 평균 '+analysis.weekdayAverage.toLocaleString('ko-KR')+'원 ('+analysis.weekdayCount+'일)보다 '+Math.abs(analysis.weekdayPercent)+'% 낮아요';
+  const shortDate=date=>Number(date.slice(5,7))+'/'+Number(date.slice(8,10));
+  const shortPrice=value=>(Number(value)/10000).toFixed(1)+'만';
+  const title='🎯 '+city+' 왕복 '+price.toLocaleString('ko-KR')+'원';
+  const dates='🗓 '+shortDate(best.departureDate)+'('+departureDay+') 출발 → '+shortDate(best.returnDate)+'('+returnDay+') 귀국';
+  const monthly='📊 '+Number(analysis.month.slice(5))+'월 평균 '+shortPrice(analysis.monthlyAverage)+' ('+analysis.monthlyCount+'일) · '+Math.abs(analysis.monthlyPercent)+'%↓';
+  const weekday='📅 '+analysis.weekdayName+'요일 평균 '+shortPrice(analysis.weekdayAverage)+' ('+analysis.weekdayCount+'일) · '+Math.abs(analysis.weekdayPercent)+'%↓';
 
   return [
     title,
+    '✈️ '+originName(dep)+' ↔ '+city+' · '+Math.max(0,days-1)+'박 '+days+'일',
+    dates,
     '',
-    priceLine,
+    '📊 '+monthly,
+    '📅 '+weekday,
     '',
-    '✈️ '+originName(dep)+'('+dep+') ↔ '+city+'('+best.toCity+')',
-    '🛫 가는 날 '+best.departureDate,
-    '🛬 오는 날 '+best.returnDate+' · '+Math.max(0,days-1)+'박 '+days+'일',
-    averageLine,
-    weekdayLine,
-    '✅ 가격 기준으로 이 날짜를 추천해요. 수하물·최종 결제금액은 확인해주세요.',
-    placeLine,
-    '',
-    '지금 가격 확인 👇',
+    '✅ 두 평균보다 낮아 추천해요.',
+    '수하물·최종 결제금액은 확인해주세요.',
+    '항공권 확인 👇',
     partnerUrl
   ].join('\n');
 }
