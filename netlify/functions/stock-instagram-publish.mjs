@@ -20,8 +20,7 @@ export default async (req) => {
   if (!key || req.headers.get('authorization') !== `Bearer ${key}`) return Response.json({ error: 'Unauthorized' }, { status: 401 });
 
   const token = Netlify.env.get('STOCK_INSTAGRAM_ACCESS_TOKEN');
-  const igUserId = Netlify.env.get('STOCK_INSTAGRAM_USER_ID');
-  if (!token || !igUserId) return Response.json({ error: 'Stock Instagram connection is not configured' }, { status: 503 });
+  if (!token) return Response.json({ error: 'Stock Instagram connection is not configured' }, { status: 503 });
 
   const { draftId, caption, imageUrls, approved } = await req.json().catch(() => ({}));
   if (approved !== true || !/^[a-zA-Z0-9_-]{8,80}$/.test(draftId || '') ||
@@ -38,9 +37,10 @@ export default async (req) => {
   if (state) return Response.json({ error: 'Previous attempt needs review before retrying', state: state.status }, { status: 409 });
 
   const me = await graph('me?fields=id,username', token);
-  if (String(me.id) !== igUserId || me.username?.toLowerCase() !== 'joosik__together') {
+  if (!me.id || me.username?.toLowerCase() !== 'joosik__together') {
     return Response.json({ error: 'Instagram token is not for @joosik__together' }, { status: 409 });
   }
+  const igUserId = encodeURIComponent(String(me.id));
 
   // Claim before the external call; uncertain outcomes must be reviewed to avoid duplicates.
   await store.setJSON(draftId, { status: 'posting', startedAt: new Date().toISOString(), username: me.username });
