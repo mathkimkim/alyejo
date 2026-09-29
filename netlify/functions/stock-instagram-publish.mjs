@@ -15,12 +15,24 @@ async function graph(path, token, fields) {
 }
 
 export default async (req) => {
-  if (req.method !== 'POST') return Response.json({ error: 'Method Not Allowed' }, { status: 405 });
+  if (!['GET', 'POST'].includes(req.method)) return Response.json({ error: 'Method Not Allowed' }, { status: 405 });
   const key = Netlify.env.get('STOCK_POST_ADMIN_KEY');
   if (!key || req.headers.get('authorization') !== `Bearer ${key}`) return Response.json({ error: 'Unauthorized' }, { status: 401 });
 
   const token = Netlify.env.get('STOCK_INSTAGRAM_ACCESS_TOKEN');
   if (!token) return Response.json({ error: 'Stock Instagram connection is not configured' }, { status: 503 });
+
+  if (req.method === 'GET') {
+    try {
+      const me = await graph('me?fields=id,username', token);
+      if (String(me.id) !== '17841423916377039' || me.username?.toLowerCase() !== 'joosik__together') {
+        return Response.json({ connected: false, error: 'Wrong Instagram account' }, { status: 409 });
+      }
+      return Response.json({ connected: true, username: me.username, id: me.id });
+    } catch (error) {
+      return Response.json({ connected: false, error: error.message }, { status: 502 });
+    }
+  }
 
   const { draftId, caption, imageUrls, approved } = await req.json().catch(() => ({}));
   if (approved !== true || !/^[a-zA-Z0-9_-]{8,80}$/.test(draftId || '') ||
@@ -37,7 +49,7 @@ export default async (req) => {
   if (state) return Response.json({ error: 'Previous attempt needs review before retrying', state: state.status }, { status: 409 });
 
   const me = await graph('me?fields=id,username', token);
-  if (!me.id || me.username?.toLowerCase() !== 'joosik__together') {
+  if (String(me.id) !== '17841423916377039' || me.username?.toLowerCase() !== 'joosik__together') {
     return Response.json({ error: 'Instagram token is not for @joosik__together' }, { status: 409 });
   }
   const igUserId = encodeURIComponent(String(me.id));
