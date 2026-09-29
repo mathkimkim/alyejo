@@ -105,8 +105,8 @@ function threadsText(group,partnerUrl,analysis){
     '✈️ '+originName(dep)+' ↔ '+city+' 왕복 '+price.toLocaleString('ko-KR')+'원',
     '🗓 '+shortDate(best.departureDate)+'('+departureDay+') 출발 → '+shortDate(best.returnDate)+'('+returnDay+') 귀국 · '+nightCount+'박 '+days+'일',
     '',
-    month+'월 같은 '+nightCount+'박 '+days+'일 평균은 약 '+average+'만 원. 이 날짜는 약 '+saving+'만 원 저렴해요.',
-    analysis.weekdayName+'요일 출발끼리 비교해도 낮은 가격이라, '+city+' 여행을 생각했다면 이 일정을 추천합니다.',
+    month+'월 출발 '+city+' '+nightCount+'박 '+days+'일 왕복 항공권 평균은 약 '+average+'만 원. 이번 일정은 약 '+saving+'만 원 저렴해요.',
+    '같은 달 '+analysis.weekdayName+'요일 출발 일정끼리 비교해도 낮은 가격이라, '+city+' 여행을 생각했다면 이 일정을 추천합니다.',
     '',
     '항공권 확인 👇',
     partnerUrl
