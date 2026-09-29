@@ -26,7 +26,7 @@ export default async (req) => {
     try {
       const me = await graph('me?fields=id,username', token);
       if (String(me.id) !== '17841423916377039' || me.username?.toLowerCase() !== 'joosik__together') {
-        return Response.json({ connected: false, error: 'Wrong Instagram account' }, { status: 409 });
+        return Response.json({ connected: false, error: 'Wrong Instagram account', observed: { id: me.id, username: me.username } }, { status: 409 });
       }
       return Response.json({ connected: true, username: me.username, id: me.id });
     } catch (error) {
