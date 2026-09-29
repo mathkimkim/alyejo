@@ -2,6 +2,7 @@ import { getStore } from '@netlify/blobs';
 
 const cacheStore = getStore({ name: 'myrealtrip-flight-cache', consistency: 'strong' });
 const CACHE_MS = 30 * 60 * 1000;
+const MAX_DISCOVER_AIRPORTS = 50;
 
 function apiKey() {
   const key = Netlify.env.get('MYREALTRIP_API_KEY');
@@ -310,7 +311,7 @@ export async function discoverMrt({dep,period,region='all',targetPrice=99999999,
   const index=await airportIndex();
   const explicit=normalizeCodes(countries).length>0 || normalizeCodes(airports).length>0;
   const hasRegions=String(region||'').split(',').map(x=>x.trim()).filter(Boolean).length>0;
-  let candidates=[],cached=false,bulkCount=0,unresolvedCount=0;
+  let candidates=[],cached=false,bulkCount=0,unresolvedCount=0,candidatePoolCount=0;
 
   if(combineRegions){
     const map=new Map();
@@ -318,9 +319,12 @@ export async function discoverMrt({dep,period,region='all',targetPrice=99999999,
       const bulk=await bulkLowest(dep,period);
       cached=bulk.cached;
       bulkCount=bulk.rows.length;
-      const expanded=resolveBulkDestinations(bulk.rows,index,region,targetPrice);
+      // bulk-lowest는 요청한 출발일 범위의 가격이 아니다. 여기에서 목표가로
+      // 목적지를 제거하면 날짜별 조회 전에 유럽 전체가 0곳이 될 수 있다.
+      const expanded=resolveBulkDestinations(bulk.rows,index,region,Number.MAX_SAFE_INTEGER);
       unresolvedCount=expanded.unresolvedCount;
-      for(const x of expanded.resolved) map.set(x.airportCode,x);
+      candidatePoolCount=expanded.resolved.length;
+      for(const x of expanded.resolved.sort((a,b)=>a.referenceLowest-b.referenceLowest).slice(0,MAX_DISCOVER_AIRPORTS)) map.set(x.airportCode,x);
     }
     if(explicit){
       for(const x of selectedAirportMetas(index,countries,airports)){
@@ -334,8 +338,9 @@ export async function discoverMrt({dep,period,region='all',targetPrice=99999999,
     const bulk=await bulkLowest(dep,period);
     cached=bulk.cached;
     bulkCount=bulk.rows.length;
-    const expanded=resolveBulkDestinations(bulk.rows,index,region,targetPrice);
-    candidates=expanded.resolved;
+    const expanded=resolveBulkDestinations(bulk.rows,index,region,Number.MAX_SAFE_INTEGER);
+    candidatePoolCount=expanded.resolved.length;
+    candidates=expanded.resolved.sort((a,b)=>a.referenceLowest-b.referenceLowest).slice(0,MAX_DISCOVER_AIRPORTS);
     unresolvedCount=expanded.unresolvedCount;
   }
 
@@ -360,7 +365,7 @@ export async function discoverMrt({dep,period,region='all',targetPrice=99999999,
   const rows=checked.filter(x=>x.status==='fulfilled').flatMap(x=>x.value||[])
     .sort((a,b)=>a.departureDate.localeCompare(b.departureDate)||a.totalPrice-b.totalPrice);
 
-  return {rows,cached,departureDate,windowStart,windowEnd,bulkCount,resolvedAirportCount:candidates.length,
+  return {rows,cached,departureDate,windowStart,windowEnd,bulkCount,resolvedAirportCount:candidates.length,candidatePoolCount,
     unresolvedCount,successCount,failedCount};
 }
 
