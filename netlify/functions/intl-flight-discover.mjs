@@ -20,6 +20,7 @@ export default async (req)=>{
       windowEnd:result.windowEnd,
       bulkCount:result.bulkCount,
       resolvedAirportCount:result.resolvedAirportCount,
+      candidatePoolCount:result.candidatePoolCount,
       unresolvedCount:result.unresolvedCount,
       successCount:result.successCount,
       failedCount:result.failedCount,
