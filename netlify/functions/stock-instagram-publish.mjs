@@ -25,8 +25,8 @@ export default async (req) => {
   if (req.method === 'GET') {
     try {
       const me = await graph('me?fields=id,username', token);
-      if (String(me.id) !== '17841423916377039' || me.username?.toLowerCase() !== 'joosik__together') {
-        return Response.json({ connected: false, error: 'Wrong Instagram account', observed: { id: me.id, username: me.username } }, { status: 409 });
+      if (!me.id || me.username?.toLowerCase() !== 'joosik__together') {
+        return Response.json({ connected: false, error: 'Wrong Instagram account' }, { status: 409 });
       }
       return Response.json({ connected: true, username: me.username, id: me.id });
     } catch (error) {
@@ -49,7 +49,7 @@ export default async (req) => {
   if (state) return Response.json({ error: 'Previous attempt needs review before retrying', state: state.status }, { status: 409 });
 
   const me = await graph('me?fields=id,username', token);
-  if (String(me.id) !== '17841423916377039' || me.username?.toLowerCase() !== 'joosik__together') {
+  if (!me.id || me.username?.toLowerCase() !== 'joosik__together') {
     return Response.json({ error: 'Instagram token is not for @joosik__together' }, { status: 409 });
   }
   const igUserId = encodeURIComponent(String(me.id));
