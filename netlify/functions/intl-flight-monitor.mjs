@@ -363,8 +363,9 @@ export default async()=>{
         });
         if(!partner?.partner || !partner?.url) throw new Error('Threads용 파트너 마이링크 생성 실패');
 
+        const socialText=threadsText(group,partner.url,analysis);
         const result=await postThreads(
-          threadsText(group,partner.url,analysis),
+          socialText,
           threadsAccessToken,
           partner.url
         );
@@ -381,6 +382,28 @@ export default async()=>{
         };
         threadsPosted=[item,...threadsPosted].slice(0,300);
         threadsPostedSet.add(key);
+        // Persist the Threads receipt first; later cross-post failures must not
+        // publish the same root post again on the next hourly run.
+        await store.setJSON('threads-posted-events',threadsPosted);
+        try{
+          const cardId=crypto.randomUUID().replaceAll('-','');
+          await store.setJSON(`social-card-${cardId}`,{
+            dep,cityCode:best.toCity,price:best.totalPrice,
+            departureDate:best.departureDate,returnDate:best.returnDate,
+            days:period,belowAveragePercent:-analysis.monthlyPercent
+          });
+          const socialQueue=await store.get('flight-social-queue',{type:'json'});
+          const next=Array.isArray(socialQueue)?socialQueue:[];
+          if(!next.some(x=>x.key===key)){
+            next.unshift({key,threadsPostId:result.id,cardId,text:socialText,
+              partnerUrl:partner.url,createdAt:new Date().toISOString(),
+              facebook:{status:'pending'},instagram:{status:'pending'}});
+            await store.setJSON('flight-social-queue',next.slice(0,300));
+          }
+        }catch(socialError){
+          run.errorCount++;
+          console.error('flight-social-queue',result?.id||'',socialError);
+        }
         try{
           await queueThreadsReplies(result,best);
         }catch(queueError){
