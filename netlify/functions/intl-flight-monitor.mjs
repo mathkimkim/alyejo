@@ -323,7 +323,8 @@ export default async()=>{
   // - 목표가 도달만으로는 게시하지 않음 (100원/수천원 등 미세 하락 공개 방지)
   const threadsEligible=pending.filter(a=>Number(a.dropPercent||0)>=10);
 
-  if(threadsAccessToken && threadsEligible.length){
+  // Threads auto-posting disabled; flight monitoring and push notifications remain active.
+  if(false && threadsAccessToken && threadsEligible.length){
     const threadsGroups=new Map();
     const calendarQueries=new Map();
     for(const a of threadsEligible){
