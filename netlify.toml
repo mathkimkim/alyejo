@@ -1,6 +1,7 @@
 [build]
-  publish = "deploy"
-  functions = "netlify/functions"
-
+  base = "jisu-social"
+  command = "npm run build"
+  publish = "public"
 [functions]
+  directory = "netlify/functions"
   node_bundler = "esbuild"
